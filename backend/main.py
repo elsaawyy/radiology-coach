@@ -29,9 +29,9 @@ JWT_ALGO     = "HS256"
 JWT_EXPIRE_H = 24 * 7   # 7 days
 
 # OpenAI Configuration
-OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
-OPENAI_MODEL = "gpt-4o-mini"  # Cheap, fast, good for medical text
-# Alternative models: "gpt-4o", "gpt-3.5-turbo"
+OPENAI_API_URL = "https://api.openai.com/v1/responses"
+OPENAI_MODEL = "gpt-5.4-mini"  
+# Alternative: "gpt-4o" (better but more expensive)
 
 # ─── DATABASE ────────────────────────────────────────────────────────────────
 database = databases.Database(DATABASE_URL)
@@ -192,7 +192,6 @@ async def me(user=Depends(get_current_user)):
 
 # ─── OPENAI PROXY ──────────────────────────────────────────────────────────
 async def call_openai(api_key: str, system: str, prompt: str) -> str:
-    """Proxy OpenAI call — user key used per-request, never persisted."""
     async with httpx.AsyncClient(timeout=60) as client:
         resp = await client.post(
             OPENAI_API_URL,
@@ -202,26 +201,29 @@ async def call_openai(api_key: str, system: str, prompt: str) -> str:
             },
             json={
                 "model": OPENAI_MODEL,
-                "max_tokens": 2000,
+                "max_output_tokens": 2000,
                 "temperature": 0.3,
-                "messages": [
+                "input": [
                     {"role": "system", "content": system},
-                    {"role": "user", "content": prompt},
+                    {"role": "user", "content": prompt}
                 ]
             }
         )
-    
+
     if resp.status_code != 200:
-        error_detail = "Unknown error"
         try:
             error_data = resp.json()
-            error_detail = error_data.get("error", {}).get("message", f"OpenAI error {resp.status_code}")
+            error_detail = error_data.get("error", {}).get("message", "OpenAI error")
         except:
-            error_detail = f"OpenAI error {resp.status_code}: {resp.text}"
+            error_detail = resp.text
         raise HTTPException(status_code=502, detail=error_detail)
-    
-    return resp.json()["choices"][0]["message"]["content"]
 
+    data = resp.json()
+
+    try:
+        return data["output"][0]["content"][0]["text"]
+    except:
+        return str(data)
 def parse_section(text: str, label: str) -> str:
     m = re.search(rf"{label}[:\s]*([\s\S]*?)(?=\n[A-Z#]|$)", text, re.IGNORECASE)
     return m.group(1).strip() if m else ""
@@ -588,3 +590,14 @@ async def delete_paper(paper_id: int, user=Depends(get_current_user)):
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "radiology-coach-api"}
+
+
+
+from fastapi.staticfiles import StaticFiles
+import os
+frontend_path = os.path.join(os.path.dirname(__file__), "frontend")
+if os.path.exists(frontend_path):
+    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
+    print(f"✅ Frontend mounted from: {frontend_path}")
+else:
+    print(f"❌ Frontend not found at: {frontend_path}")
