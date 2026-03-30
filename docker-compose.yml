@@ -1,0 +1,54 @@
+version: "3.9"
+
+services:
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: radcoach
+      POSTGRES_PASSWORD: strongpassword
+      POSTGRES_DB: radcoach  # Changed to match username (required for PostgreSQL init)
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/init-db.sql:/docker-entrypoint-initdb.d/01-init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U radcoach -d radiology_coach"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── FastAPI Backend ─────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://radcoach:strongpassword@db:5432/radiology_coach
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app   # hot-reload in dev
+
+  # ── Nginx reverse proxy (optional, for local HTTPS simulation) ──────────────
+  # Uncomment for production-like local setup:
+  # nginx:
+  #   image: nginx:alpine
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+  #     - ./frontend/dist:/usr/share/nginx/html   # built frontend
+  #   depends_on:
+  #     - api
+
+volumes:
+  pgdata:
