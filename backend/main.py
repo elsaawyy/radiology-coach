@@ -595,9 +595,15 @@ async def health():
 
 from fastapi.staticfiles import StaticFiles
 import os
+
+# Serve frontend files
 frontend_path = os.path.join(os.path.dirname(__file__), "frontend")
 if os.path.exists(frontend_path):
     app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
-    print(f"✅ Frontend mounted from: {frontend_path}")
+    print(f"✅ Frontend mounted at / from {frontend_path}")
 else:
-    print(f"❌ Frontend not found at: {frontend_path}")
+    print(f"❌ Frontend not found at {frontend_path}")
+    # Also check if frontend is at different location
+    if os.path.exists("/app/frontend"):
+        app.mount("/", StaticFiles(directory="/app/frontend", html=True), name="frontend")
+        print("✅ Frontend mounted from /app/frontend")
