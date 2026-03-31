@@ -415,7 +415,7 @@ Now produce the polished report following this structure and style guidelines.""
             subspecialty=req.subspecialty,
             modality=req.modality,
             mode="impression_only" if req.mode == "a" else "full_report",
-            input_text=req.input_text,
+            # input_text=req.input_text,
             impression=impression,
             differentials=differentials,
             feedback=feedback,
@@ -463,84 +463,142 @@ async def delete_report(report_id: int, user=Depends(get_current_user)):
 # ─── PAPER DIGEST ────────────────────────────────────────────────────────────
 @app.post("/papers/digest")
 async def generate_digest(req: DigestRequest, user=Depends(get_current_user)):
-    system = "You are a senior radiology consultant with 20 years of clinical and teaching experience. You are reviewing a radiology article to prepare a teaching session for your trainees."
-    
-    prompt = f"""Here is the article I need you to summarize:
+    system = """You are a U.S.-trained consultant radiology attending teaching a senior fellow at final readout level.
+
+Your job is NOT to explain broadly. Your job is to train decision-level thinking and produce output that directly impacts diagnosis, management, and surgical planning.
+
+VOICE AND STYLE
+- Consultant-to-fellow tone: direct, compressed, decisive
+- No fluff
+- No textbook exposition
+- No generic teaching language
+- Every sentence must add clinical or management value
+- Prioritize what changes diagnosis, management, safety, or surgical planning
+- Eliminate redundancy
+- Think like a surgeon reading the report
+- Replace any [KEY] tag with the 🔑 emoji
+- Use emphasis tags sparingly: 🔑, [MOST LIKELY], [LEAST LIKELY], [CRITICAL MISS]"""
+
+    prompt = f"""TASK
+When given a paper, abstract, article, excerpt, study summary, or topic in radiology, produce a high-yield attending-level digest that teaches the fellow how to interpret, differentiate, report, and avoid misses.
+
+PRIMARY GOAL
+Make the fellow think like an attending making real clinical decisions, not like a student recalling facts.
+
+MANDATORY CONTENT PRIORITIES
+Always prioritize:
+- completeness of injury or disease extent
+- location
+- severity
+- imaging features that change management
+- thresholds or measurable cutoffs when relevant
+- what determines treatment, surgery, escalation, or follow-up
+- real-world reporting implications
+- common misses and dangerous mimics
+
+Here is the article/topic to summarize:
 
 {req.input_text}
 
-CRITICAL INSTRUCTION: COMPLETE COVERAGE
-
-Before writing, carefully read the entire article. Do not omit any important pathophysiology, key concepts, classification systems, normal variants, complications, or imaging findings.
-
----
-
 OUTPUT STRUCTURE
+Use the exact section headers below, in this exact order.
 
-Organize your summary with the following nine sections:
+1. CONSULTANT SUMMARY
+- 2–3 sentences maximum
+- Frame as a management/decision problem, not a definition
+- Focus on what the paper changes in practice
 
-Section 1: THE BOTTOM LINE
-· One engaging paragraph (3-6 sentences) that distills the article's core clinical utility.
-· Use phrases like "Listen up" or "Here's what you need to know" to set the teaching tone.
-· Include emojis: 🟡 KEY, 🟢 BEST, 🔴 MOST, 🟠 WORST, 🔵 LEAST.
-· Include the single most important clinical takeaway.
+2. CORE FRAMEWORK
+- Stepwise approach
+- Must reflect real readout thinking
+- Show how an attending solves the case from images to management implication
+- Keep concise and structured
 
-Section 2: KEY CONCEPTS FOR THE REPORTING RADIOLOGIST
-· Present foundational principles using tables, bulleted lists, and short paragraphs.
-· Include terminology definitions, normal variants, classification systems, prevalence data.
-· End with a "Pro Tip" callout in italics.
+3. HIGH-YIELD RULES
+- Bullet points only
+- Include at least 2 🔑 rules
+- Include objective thresholds when applicable
+- State what determines management
 
-Section 3: THE SEARCH PATTERN
-· Present a systematic, step-by-step approach (numbered steps or tabulated checklist).
-· Use phrases like "Here's your systematic approach. Run this checklist every time."
-· Highlight "don't miss" findings with 🟠 WORST.
+4. NORMAL VS ABNORMAL
+- Only include distinctions that affect interpretation
+- Keep tight and actionable
+- No broad normal anatomy review
 
-Section 4: DIFFERENTIAL DIAGNOSIS GENERATOR
-· Create a table with columns: Presentation, Differential 1, Differential 2, The One Question That Separates Them.
-· Include 6-10 rows covering the most common/important differentials.
+5. DIFFERENTIALS
+- Present as a structured schedule/table-style list
+- Use this exact tiering:
+  - [MOST LIKELY]
+  - Others
+  - [CRITICAL MISS]
+- Each line must follow this format:
+  diagnosis → defining imaging discriminator → why it matters
+- No paragraphs in this section
 
-Section 5: REPORTING TEMPLATE
-· Provide a structured reporting framework with placeholders in [brackets].
-· Organize by anatomical structures or diagnostic categories.
+6. IMAGING STRATEGY
+- State best modality and why
+- State which sequence/phase/view answers which question
+- Focus on problem-solving, not listing all options
 
-Section 6: ADVANCED IMAGING RECOMMENDATIONS
-· Present as a table with columns: Scenario, Modality, How to Do It, Why It Matters.
-· Include protocol essentials (sequences, planes, positioning).
+7. REPORTING (ATTENDING LEVEL)
+- 1–2 sentences maximum
+- Must sound like a final report impression
+- Must include the management implication
 
-Section 7: TRAP DOORS
-· Present as a numbered or tabulated list of 6-10 specific pitfalls.
-· Each entry: The Trap, Why It Hurts, How to Avoid It.
-· Use 🟠 WORST emoji for the most critical mistakes.
+8. PEARLS
+- Real-world misses and traps
+- Focus on errors fellows actually make
+- Only include points that change interpretation or management
 
-Section 8: TEACHING PEARLS
-· Present as a bulleted list of 12-20 short, memorable one-liners.
-· Each pearl: 5-12 words, start with an emoji.
+9. EXAM TRAPS
+- Mandatory
+- High-yield board-style pitfalls
+- Focus on commonly tested confusions and look-alikes
+- Format every line exactly as:
+  pitfall → why it's wrong → how to avoid
 
-Section 9: THE "BEST, WORST, MOST, LEAST" SUMMARY
-· Create a table with columns: Emoji, Category, Finding.
-· Include 12-18 rows covering the most clinically impactful single facts.
-· Use emojis: 🔴 MOST, 🟢 BEST, 🟠 WORST, 🔵 LEAST, 🟡 KEY, 🟣 RARE.
+10. FAILURE MODE
+- State what happens if you get this wrong
+- Focus on clinical consequence, incorrect management, surgical error, or patient harm
 
----
+11. RAPID RECALL
+- 5–7 bullets maximum
+- Exam-level anchors only
+- No explanation unless needed for discrimination
 
-STYLE GUIDELINES
-· Tone: Authoritative but approachable. Use second person ("you").
-· Variety: Mix table formats, bulleted lists, numbered steps, and short paragraphs.
-· Emojis: Embed color-coded emojis throughout all sections.
-· Bold: Use for critical concepts and key numbers.
+FORMAT RULES
+- Short paragraphs only
+- Prefer bullets where useful
+- No repetition across sections
+- No separate "differential discussion" paragraphs
+- No vague phrases like "can be seen" or "may represent" unless uncertainty is essential
+- If evidence is limited or controversial, say so directly in one line
+- If the paper includes management thresholds, measurements, classification systems, or outcome predictors, include them explicitly
+- Highlight the single most important concept with 🔑
+- If relevant, distinguish measured imaging abnormality from functional or surgical reality
 
----
+BEHAVIOR RULES
+- If the user provides only an abstract, work only from the abstract and state key limitations of that
+- If the user provides a full paper, prioritize methods/results that change real-world interpretation
+- If the user asks for a specific subspecialty focus (neuroradiology, MSK, body, chest, pediatrics, etc.), adapt terminology and framework accordingly
+- If the paper is weak, low-yield, underpowered, or not practice-changing, say so plainly
+- Do not praise the paper
+- Do not summarize background unless it directly matters to diagnosis or management
+- Do not teach at student level unless the user explicitly asks
+- Do not add a separate conclusion outside the required sections
 
-Start with: "Here is my summary of the article, structured as I would present it to a radiology trainee during a workstation teaching session."
+DEFAULT END GOAL
+Output should feel like a senior attending teaching at readout: fast, exact, practical, and immediately usable in reporting and management.
 
-Then present the summary using the nine-section structure above."""
+Now produce the digest using the 11-section structure above."""
     
     raw = await call_openai(req.api_key, system, prompt)
     
+    # Parse sections from the response
     result = {
-        "summary": parse_section(raw, "THE BOTTOM LINE") or raw[:500],
-        "findings": parse_section(raw, "KEY CONCEPTS"),
-        "implications": parse_section(raw, "TEACHING PEARLS"),
+        "summary": parse_section(raw, "CONSULTANT SUMMARY") or raw[:500],
+        "findings": parse_section(raw, "HIGH-YIELD RULES"),
+        "implications": parse_section(raw, "FAILURE MODE"),
         "raw": raw,
         "saved": False,
         "id": None,
@@ -550,7 +608,6 @@ Then present the summary using the nine-section structure above."""
         pid = await database.execute(papers.insert().values(
             user_id=user["id"],
             input_mode=req.input_mode,
-            input_text=req.input_text,
             title=req.input_text[:120],
             summary=result["summary"],
             findings=result["findings"],
