@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: radiology-coach-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port 10000
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: radiology-coach-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        value: https://silly-platypus-5bc231.netlify.app,https://your-app.onrender.com
+
+databases:
+  - name: radiology-coach-db
+    databaseName: radiology_coach
+    user: radcoach
