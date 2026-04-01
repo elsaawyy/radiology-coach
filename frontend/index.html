@@ -6,6 +6,7 @@
 <title>Radiology Coach</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
+/* Your existing CSS styles - keep all of them */
 :root {
   --bg:       #07090f;
   --surface:  #0e1117;
@@ -28,7 +29,6 @@
   --body:     'DM Sans', sans-serif;
   --shadow:   0 4px 24px rgba(0,0,0,.5);
 }
-/* Theme Toggle Button Styles */
 .theme-toggle {
   background: var(--surface2);
   border: 1px solid var(--border);
@@ -38,7 +38,6 @@
   align-items: center;
   gap: 4px;
 }
-
 .theme-toggle-btn {
   background: transparent;
   border: none;
@@ -46,22 +45,18 @@
   padding: 6px 14px;
   border-radius: 25px;
   font-size: 13px;
-  font-family: 'DM Mono', monospace;
+  font-family: var(--mono);
   transition: all 0.3s ease;
   color: var(--text2);
 }
-
 .theme-toggle-btn.active {
   background: var(--accent);
   color: white;
 }
-
 .theme-toggle-btn:hover:not(.active) {
   background: var(--surface3);
   color: var(--text);
 }
-
-/* Light Mode Colors */
 body.light-mode {
   --bg: #f5f7fb;
   --surface: #ffffff;
@@ -80,8 +75,6 @@ body {
   font-family:var(--body); min-height:100vh;
   background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(77,159,255,.07), transparent);
 }
-
-/* ── AUTH SCREENS ────────────────────────────────────────── */
 #auth-screen {
   min-height:100vh; display:flex; align-items:center; justify-content:center;
   padding:20px;
@@ -96,10 +89,7 @@ body {
   from { opacity:0; transform:translateY(16px); }
   to   { opacity:1; transform:translateY(0); }
 }
-.auth-logo {
-  display:flex; align-items:center; gap:10px;
-  margin-bottom:32px;
-}
+.auth-logo { display:flex; align-items:center; gap:10px; margin-bottom:32px; }
 .auth-logo-icon {
   width:40px; height:40px; border-radius:10px;
   background:linear-gradient(135deg,var(--accent),#6b8cff);
@@ -108,10 +98,8 @@ body {
 }
 .auth-logo-text { font-family:var(--display); font-size:17px; font-weight:700; }
 .auth-logo-sub  { font-size:11px; color:var(--text2); font-family:var(--mono); margin-top:1px; }
-
 .auth-title { font-family:var(--display); font-size:22px; font-weight:700; margin-bottom:6px; }
 .auth-sub   { font-size:13px; color:var(--text2); margin-bottom:28px; }
-
 .form-field { margin-bottom:16px; }
 .form-field label {
   display:block; font-size:11px; font-family:var(--mono); font-weight:500;
@@ -126,7 +114,6 @@ body {
 }
 .form-field input:focus { border-color:var(--accent); }
 .form-field input::placeholder { color:var(--text3); }
-
 .btn-full {
   width:100%; padding:12px; border:none; border-radius:8px;
   background:var(--accent); color:#fff; cursor:pointer;
@@ -135,11 +122,7 @@ body {
 }
 .btn-full:hover { background:var(--accent-h); transform:translateY(-1px); box-shadow:0 4px 16px rgba(77,159,255,.3); }
 .btn-full:disabled { opacity:.5; cursor:not-allowed; transform:none; box-shadow:none; }
-
-.auth-switch {
-  margin-top:20px; text-align:center;
-  font-size:13px; color:var(--text2);
-}
+.auth-switch { margin-top:20px; text-align:center; font-size:13px; color:var(--text2); }
 .auth-switch a { color:var(--accent); cursor:pointer; text-decoration:none; }
 .auth-switch a:hover { text-decoration:underline; }
 .auth-error {
@@ -148,12 +131,8 @@ body {
   font-size:13px; margin-bottom:16px; display:none;
 }
 .auth-error.show { display:block; }
-
-/* ── APP SHELL ───────────────────────────────────────────── */
 #app-screen { display:none; min-height:100vh; flex-direction:column; }
 #app-screen.show { display:flex; }
-
-/* TOPBAR */
 .topbar {
   height:54px; display:flex; align-items:center; padding:0 20px;
   background:rgba(14,17,23,.85); backdrop-filter:blur(12px);
@@ -189,8 +168,6 @@ body {
   font-family:var(--mono); font-size:11px; transition:all .15s;
 }
 .btn-logout:hover { border-color:var(--red); color:var(--red); }
-
-/* TABS */
 .tabs {
   background:var(--surface); border-bottom:1px solid var(--border);
   display:flex; padding:0 20px; gap:2px;
@@ -206,13 +183,9 @@ body {
   background:var(--accent); color:#fff;
   font-size:9px; padding:1px 6px; border-radius:10px;
 }
-
-/* MAIN */
 .main { flex:1; padding:28px 20px; max-width:860px; margin:0 auto; width:100%; }
 .panel { display:none; animation:fadeUp .25s ease; }
 .panel.active { display:block; }
-
-/* SECTION HEAD */
 .section-head {
   font-family:var(--mono); font-size:10px; font-weight:500; letter-spacing:2px;
   text-transform:uppercase; color:var(--text3); margin-bottom:22px;
@@ -223,8 +196,6 @@ body {
   background:linear-gradient(to bottom,var(--accent),var(--violet));
   flex-shrink:0;
 }
-
-/* CONFIG BAR */
 .config-bar {
   background:var(--surface2); border:1px solid var(--border);
   border-radius:var(--r); padding:16px; margin-bottom:20px;
@@ -243,8 +214,6 @@ body {
 }
 .config-field select:focus { border-color:var(--accent); }
 select option { background:var(--surface2); }
-
-/* API KEY WIDGET */
 .apikey-widget {
   background:var(--surface2); border:1px solid var(--border);
   border-radius:var(--r); padding:14px 16px; margin-bottom:20px;
@@ -267,8 +236,6 @@ select option { background:var(--surface2); }
 .dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
 .dot.g { background:var(--green); }
 .dot.r { background:var(--red); }
-
-/* MODE PILLS */
 .mode-row { display:flex; gap:8px; margin-bottom:20px; }
 .mode-pill {
   padding:7px 18px; border-radius:20px; font-size:12px;
@@ -278,8 +245,6 @@ select option { background:var(--surface2); }
 }
 .mode-pill.active { background:var(--accent); color:#fff; border-color:var(--accent); box-shadow:0 2px 12px rgba(77,159,255,.25); }
 .mode-pill:not(.active):hover { border-color:var(--accent); color:var(--accent); }
-
-/* HINT */
 .hint {
   border-left:3px solid var(--accent); padding:10px 14px;
   background:rgba(77,159,255,.05); border-radius:0 8px 8px 0;
@@ -287,8 +252,6 @@ select option { background:var(--surface2); }
   line-height:1.6;
 }
 .hint b { color:var(--accent); }
-
-/* INPUT TABS */
 .input-tabs { display:flex; gap:6px; margin-bottom:14px; }
 .input-tab {
   padding:6px 14px; border-radius:6px; font-size:11px; font-family:var(--mono);
@@ -296,8 +259,6 @@ select option { background:var(--surface2); }
   color:var(--text2); transition:all .15s;
 }
 .input-tab.active { background:var(--surface3); color:var(--text); border-color:var(--border2); }
-
-/* TEXTAREA */
 .field-group { display:flex; flex-direction:column; gap:6px; margin-bottom:0; }
 .field-label {
   font-size:10px; font-family:var(--mono); letter-spacing:1.2px;
@@ -312,8 +273,6 @@ textarea {
 }
 textarea:focus { border-color:var(--accent); }
 textarea::placeholder { color:var(--text3); }
-
-/* ACTION ROW */
 .action-row { display:flex; gap:10px; margin-top:18px; align-items:center; flex-wrap:wrap; }
 .btn-primary {
   padding:10px 22px; border:none; border-radius:8px;
@@ -337,15 +296,12 @@ textarea::placeholder { color:var(--text3); }
 .btn-sm:hover { border-color:var(--text2); color:var(--text); }
 .btn-sm.save { border-color:var(--green); color:var(--green); }
 .btn-sm.save:hover { background:rgba(62,207,142,.1); }
-.btn-sm.del { }
 .btn-sm.del:hover { border-color:var(--red); color:var(--red); }
 .save-check {
   display:flex; align-items:center; gap:8px;
   font-size:12px; font-family:var(--mono); color:var(--text2);
 }
 .save-check input[type=checkbox] { accent-color:var(--accent); width:14px; height:14px; cursor:pointer; }
-
-/* LOADING */
 .loading { display:none; align-items:center; gap:10px; margin-top:18px; }
 .loading.show { display:flex; }
 .spinner {
@@ -355,8 +311,6 @@ textarea::placeholder { color:var(--text3); }
 }
 @keyframes spin { to { transform:rotate(360deg); } }
 .loading span { font-size:12px; font-family:var(--mono); color:var(--text2); }
-
-/* RESULT CARD */
 .result-card {
   background:var(--surface); border:1px solid var(--border);
   border-radius:var(--r); padding:20px; margin-top:22px;
@@ -380,8 +334,6 @@ textarea::placeholder { color:var(--text3); }
 .tag-g { color:var(--green); }
 .tag-a { color:var(--amber); }
 .tag-v { color:var(--violet); }
-
-/* LIBRARY */
 .lib-toolbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:12px; }
 .lib-tabs { display:flex; gap:6px; }
 .lib-tab {
@@ -390,7 +342,7 @@ textarea::placeholder { color:var(--text3); }
   color:var(--text2); transition:all .15s;
 }
 .lib-tab.active { background:var(--surface2); color:var(--text); border-color:var(--border2); }
-.lib-actions { display:flex; gap:8px; }
+.lib-actions { display:flex; gap:8px; flex-wrap:wrap; }
 .search-input {
   width:100%; padding:10px 14px;
   background:var(--surface2); border:1px solid var(--border2);
@@ -399,7 +351,6 @@ textarea::placeholder { color:var(--text3); }
 }
 .search-input:focus { border-color:var(--accent); }
 .search-input::placeholder { color:var(--text3); }
-
 .lib-grid { display:flex; flex-direction:column; gap:10px; }
 .lib-card {
   background:var(--surface); border:1px solid var(--border);
@@ -412,12 +363,9 @@ textarea::placeholder { color:var(--text3); }
 .lib-card-meta { font-size:11px; font-family:var(--mono); color:var(--text3); margin-top:4px; }
 .lib-card-preview { font-size:12px; color:var(--text2); margin-top:8px; line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 .lib-card-btns { display:flex; gap:6px; flex-shrink:0; }
-
 .lib-empty { text-align:center; padding:64px 20px; }
 .lib-empty-icon { font-size:40px; opacity:.25; margin-bottom:14px; }
 .lib-empty-text { font-size:13px; font-family:var(--mono); color:var(--text3); }
-
-/* MODAL */
 .overlay {
   position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:500;
   display:none; align-items:center; justify-content:center; padding:20px;
@@ -436,8 +384,6 @@ textarea::placeholder { color:var(--text3); }
 .modal-section { margin-bottom:16px; }
 .modal-lbl { font-size:10px; font-family:var(--mono); letter-spacing:1.5px; text-transform:uppercase; color:var(--text3); margin-bottom:7px; }
 .modal-val { font-size:13px; line-height:1.75; color:var(--text); white-space:pre-wrap; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px; font-family:var(--mono); font-size:12px; }
-
-/* TOAST */
 .toast {
   position:fixed; bottom:22px; right:22px; z-index:9999;
   background:var(--surface); border:1px solid var(--border);
@@ -449,12 +395,9 @@ textarea::placeholder { color:var(--text3); }
 .toast.show { transform:translateY(0); opacity:1; }
 .toast.ok  { border-color:var(--green); }
 .toast.err { border-color:var(--red); }
-
-/* Scrollbar */
 ::-webkit-scrollbar { width:6px; height:6px; }
 ::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
-
 @media(max-width:600px) {
   .config-bar { flex-direction:column; }
   .config-field select { min-width:unset; width:100%; }
@@ -465,18 +408,16 @@ textarea::placeholder { color:var(--text3); }
 </head>
 <body>
 
-<!-- ═══════════════ AUTH SCREEN ═══════════════════════════════════════════ -->
+<!-- AUTH SCREEN -->
 <div id="auth-screen">
   <div class="auth-card" id="auth-card">
     <div class="auth-logo">
       <div class="auth-logo-icon">🩻</div>
       <div>
-        <div class="auth-logo-text">Radiology </div>
+        <div class="auth-logo-text">Radiology</div>
         <div class="auth-logo-sub">FELLOW WORKSPACE</div>
       </div>
     </div>
-
-    <!-- LOGIN FORM -->
     <div id="form-login">
       <div class="auth-title">Welcome back</div>
       <div class="auth-sub">Sign in to your workspace</div>
@@ -486,8 +427,6 @@ textarea::placeholder { color:var(--text3); }
       <button class="btn-full" id="login-btn" onclick="doLogin()">Sign In</button>
       <div class="auth-switch">Don't have an account? <a onclick="showRegister()">Create one</a></div>
     </div>
-
-    <!-- REGISTER FORM -->
     <div id="form-register" style="display:none">
       <div class="auth-title">Create account</div>
       <div class="auth-sub">Join your fellow workspace</div>
@@ -501,939 +440,563 @@ textarea::placeholder { color:var(--text3); }
   </div>
 </div>
 
-<!-- ═══════════════ APP SCREEN ════════════════════════════════════════════ -->
+<!-- APP SCREEN -->
 <div id="app-screen">
-
-  <!-- TOPBAR -->
-<div class="topbar">
-  <div class="app-logo"><div class="app-logo-icon">🩻</div>Radiology Assistant</div>
-  <div class="topbar-spacer"></div>
-  
-  <!-- THEME TOGGLE BUTTONS - ADD THIS -->
-  <div class="theme-toggle">
-    <button class="theme-toggle-btn active" onclick="setTheme('dark')">🌙 Dark</button>
-    <button class="theme-toggle-btn" onclick="setTheme('light')">☀️ Light</button>
+  <div class="topbar">
+    <div class="app-logo"><div class="app-logo-icon">🩻</div>Radiology Assistant</div>
+    <div class="topbar-spacer"></div>
+    <div class="theme-toggle">
+      <button class="theme-toggle-btn active" id="btn-dark" onclick="setTheme('dark')">🌙 Dark</button>
+      <button class="theme-toggle-btn" id="btn-light" onclick="setTheme('light')">☀️ Light</button>
+    </div>
+    <div class="user-pill">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <span id="user-name">—</span>
+    </div>
+    <button class="btn-logout" onclick="doLogout()">Sign out</button>
   </div>
-  
-  <div class="user-pill">
-    <div class="user-avatar" id="user-avatar">?</div>
-    <span id="user-name">—</span>
-  </div>
-  <button class="btn-logout" onclick="doLogout()">Sign out</button>
-</div>
 
-
-  <!-- TABS -->
   <div class="tabs">
-    <div class="tab active" onclick="switchTab('report')">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      Report Assistant
-    </div>
-    <div class="tab" onclick="switchTab('digest')">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
-      Paper Digest
-    </div>
-    <div class="tab" onclick="switchTab('library')">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
-      Libraries <span class="tab-cnt" id="lib-tab-cnt">0</span>
-    </div>
+    <div class="tab active" onclick="switchTab('report')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Report Assistant</div>
+    <div class="tab" onclick="switchTab('digest')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>Paper Digest</div>
+    <div class="tab" onclick="switchTab('library')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>Libraries <span class="tab-cnt" id="lib-tab-cnt">0</span></div>
   </div>
 
-  <!-- MAIN -->
   <div class="main">
-
-    <!-- ── API KEY (shared) ── -->
     <div class="apikey-widget">
-      <label>OpenAI Key</label>
+      <label>API Key</label>
       <input type="password" id="api-key" placeholder="sk-..." oninput="onApiKeyChange(this.value)">
       <button class="btn-sm" onclick="toggleApiVis()">Show</button>
-      <div class="apikey-status">
-        <span class="dot r" id="ak-dot"></span>
-        <span id="ak-text">Not set</span>
-      </div>
+      <div class="apikey-status"><span class="dot r" id="ak-dot"></span><span id="ak-text">Not set</span></div>
     </div>
 
-    <!-- ══ REPORT COACH ══════════════════════════════════════════════════ -->
     <div class="panel active" id="panel-report">
       <div class="section-head">Report &amp; Impression Polisher</div>
-
       <div class="mode-row">
         <button class="mode-pill active" id="pill-a" onclick="setReportMode('a')">Mode A — Impression Only</button>
         <button class="mode-pill" id="pill-b" onclick="setReportMode('b')">Mode B — Full Report</button>
       </div>
-
-      <div class="hint" id="mode-hint">
-        <b>Mode A:</b> Paste rough impression → Polished Impression + Top 3 Differentials + Feedback
-      </div>
-
+      <div class="hint" id="mode-hint"><b>Mode A:</b> Paste rough impression → Polished Impression + Top 3 Differentials + Feedback</div>
       <div class="config-bar">
-        <div class="config-field">
-          <label>Subspecialty</label>
-          <select id="subspecialty">
-            <option>General</option><option>Neuro</option><option>Chest</option>
-            <option>Abdomen</option><option>MSK</option><option>Emergency</option>
-            <option>Breast</option><option>Pediatric</option><option>Nuclear</option><option>IR</option>
-          </select>
-        </div>
-        <div class="config-field">
-          <label>Modality</label>
-          <select id="modality">
-            <option>Any</option><option>CT</option><option>MRI</option><option>X-Ray</option>
-            <option>Ultrasound</option><option>PET-CT</option><option>Fluoroscopy</option>
-            <option>Mammography</option><option>Nuclear Medicine</option>
-          </select>
-        </div>
+        <div class="config-field"><label>Subspecialty</label><select id="subspecialty"><option>General</option><option>Neuro</option><option>Chest</option><option>Abdomen</option><option>MSK</option><option>Emergency</option><option>Breast</option><option>Pediatric</option><option>Nuclear</option><option>IR</option></select></div>
+        <div class="config-field"><label>Modality</label><select id="modality"><option>Any</option><option>CT</option><option>MRI</option><option>X-Ray</option><option>Ultrasound</option><option>PET-CT</option><option>Fluoroscopy</option><option>Mammography</option><option>Nuclear Medicine</option></select></div>
       </div>
-
-      <div class="field-group">
-        <div class="field-label" id="r-label">Paste Rough Impression or Diagnostic Summary</div>
-        <textarea id="r-input" placeholder="e.g. Liver lesion. Uncertain if benign. Spleen enlarged. Bilateral pleural effusions small."></textarea>
-      </div>
-
+      <div class="field-group"><div class="field-label" id="r-label">Paste Rough Impression or Diagnostic Summary</div><textarea id="r-input" placeholder="e.g. Liver lesion. Uncertain if benign. Spleen enlarged. Bilateral pleural effusions small."></textarea></div>
       <div class="action-row">
-        <button class="btn-primary" id="polish-btn" onclick="polishReport()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-          Polish Report
-        </button>
+        <button class="btn-primary" id="polish-btn" onclick="polishReport()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Polish Report</button>
         <button class="btn-ghost" onclick="clearReport()">Clear</button>
-        <label class="save-check">
-          <input type="checkbox" id="r-save" checked>
-          Save to library
-        </label>
+        <label class="save-check"><input type="checkbox" id="r-save" checked> Save to library</label>
       </div>
-      <div class="loading" id="r-loading"><div class="spinner"></div><span>Polishing with DeepSeek…</span></div>
-
+      <div class="loading" id="r-loading"><div class="spinner"></div><span>Polishing report…</span></div>
       <div class="result-card" id="r-result">
-        <div class="result-section">
-          <div class="result-tag tag-g">✦ Polished Impression</div>
-          <div class="result-body" id="r-res-imp"></div>
-        </div>
+        <div class="result-section"><div class="result-tag tag-g">✦ Polished Impression</div><div class="result-body" id="r-res-imp"></div></div>
         <div class="divider"></div>
-        <div class="result-section">
-          <div class="result-tag tag-a">◈ Top 3 Differentials</div>
-          <div class="result-body mono" id="r-res-diff"></div>
-        </div>
+        <div class="result-section"><div class="result-tag tag-a">◈ Top 3 Differentials</div><div class="result-body mono" id="r-res-diff"></div></div>
         <div class="divider"></div>
-        <div class="result-section">
-          <div class="result-tag tag-v">◎ Feedback &amp; Rationale</div>
-          <div class="result-body" id="r-res-fb"></div>
-        </div>
+        <div class="result-section"><div class="result-tag tag-v">◎ Feedback &amp; Rationale</div><div class="result-body" id="r-res-fb"></div></div>
         <div class="divider"></div>
-        <div class="result-actions">
-          <button class="btn-sm save" id="r-save-btn" onclick="saveCurrentReport()">💾 Save</button>
-          <button class="btn-sm" onclick="copyResult('report')">📋 Copy</button>
-        </div>
+        <div class="result-actions"><button class="btn-sm save" id="r-save-btn" onclick="saveCurrentReport()">💾 Save</button><button class="btn-sm" onclick="copyResult('report')">📋 Copy</button></div>
       </div>
     </div>
 
-    <!-- ══ PAPER DIGEST ════════════════════════════════════════════════════ -->
     <div class="panel" id="panel-digest">
       <div class="section-head">Article &amp; Paper Digest</div>
-
       <div class="input-tabs">
         <button class="input-tab active" id="dt-title" onclick="setDigestMode('title')">📄 Title</button>
         <button class="input-tab" id="dt-url" onclick="setDigestMode('url')">🔗 URL / DOI</button>
         <button class="input-tab" id="dt-text" onclick="setDigestMode('text')">📋 Paste Text</button>
       </div>
-
-      <div class="field-group">
-        <div class="field-label" id="d-label">Paper Title or Topic</div>
-        <textarea id="d-input" rows="3" style="min-height:80px" placeholder="e.g. LI-RADS v2018 CT/MRI criteria for HCC, Radiology 2018"></textarea>
-      </div>
-
+      <div class="field-group"><div class="field-label" id="d-label">Paper Title or Topic</div><textarea id="d-input" rows="3" style="min-height:80px" placeholder="e.g. LI-RADS v2018 CT/MRI criteria for HCC, Radiology 2018"></textarea></div>
       <div class="action-row">
-        <button class="btn-primary" id="digest-btn" onclick="generateDigest()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          Generate Digest
-        </button>
+        <button class="btn-primary" id="digest-btn" onclick="generateDigest()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Generate Digest</button>
         <button class="btn-ghost" onclick="clearDigest()">Clear</button>
-        <label class="save-check">
-          <input type="checkbox" id="d-save" checked>
-          Save to library
-        </label>
+        <label class="save-check"><input type="checkbox" id="d-save" checked> Save to library</label>
       </div>
       <div class="loading" id="d-loading"><div class="spinner"></div><span>Generating digest…</span></div>
-
       <div class="result-card" id="d-result">
-        <div class="result-section">
-          <div class="result-tag tag-g">✦ Summary</div>
-          <div class="result-body" id="d-res-sum"></div>
-        </div>
+        <div class="result-section"><div class="result-tag tag-g">✦ Summary</div><div class="result-body" id="d-res-sum"></div></div>
         <div class="divider"></div>
-        <div class="result-section">
-          <div class="result-tag tag-a">◈ Key Findings</div>
-          <div class="result-body mono" id="d-res-find"></div>
-        </div>
+        <div class="result-section"><div class="result-tag tag-a">◈ Key Findings</div><div class="result-body mono" id="d-res-find"></div></div>
         <div class="divider"></div>
-        <div class="result-section">
-          <div class="result-tag tag-v">◎ Clinical Implications</div>
-          <div class="result-body" id="d-res-impl"></div>
-        </div>
+        <div class="result-section"><div class="result-tag tag-v">◎ Clinical Implications</div><div class="result-body" id="d-res-impl"></div></div>
         <div class="divider"></div>
-        <div class="result-actions">
-          <button class="btn-sm save" id="d-save-btn" onclick="saveCurrentDigest()">💾 Save</button>
-          <button class="btn-sm" onclick="copyResult('digest')">📋 Copy</button>
-        </div>
+        <div class="result-actions"><button class="btn-sm save" id="d-save-btn" onclick="saveCurrentDigest()">💾 Save</button><button class="btn-sm" onclick="copyResult('digest')">📋 Copy</button></div>
       </div>
     </div>
 
-    <!-- ══ LIBRARY ══════════════════════════════════════════════════════════ -->
     <div class="panel" id="panel-library">
       <div class="lib-toolbar">
-        <div>
-          <div class="section-head" style="margin-bottom:4px">My Libraries</div>
-          <div style="font-size:12px;color:var(--text3);font-family:var(--mono)">Saved reports and paper digests</div>
-        </div>
-        <div class="lib-actions">
-  <button class="btn-sm" onclick="exportLib()">⬆ Export JSON</button>
-  <button class="btn-sm" onclick="exportAllToWord()" style="margin-left: 8px;">📄 Export All to Word</button>
-        </div>
-
-      <div class="lib-tabs" style="margin-bottom:16px">
-        <button class="lib-tab active" id="lt-reports" onclick="setLibTab('reports')">📄 Reports (<span id="cnt-r">0</span>)</button>
-        <button class="lib-tab" id="lt-papers"  onclick="setLibTab('papers')">📚 Papers (<span id="cnt-p">0</span>)</button>
+        <div><div class="section-head" style="margin-bottom:4px">My Libraries</div><div style="font-size:12px;color:var(--text3);font-family:var(--mono)">Saved reports and paper digests</div></div>
+        <div class="lib-actions"><button class="btn-sm" onclick="exportLib()">⬆ Export JSON</button><button class="btn-sm" onclick="exportAllToWord()">📄 Export All to Word</button></div>
       </div>
-
+      <div class="lib-tabs" style="margin-bottom:16px"><button class="lib-tab active" id="lt-reports" onclick="setLibTab('reports')">📄 Reports (<span id="cnt-r">0</span>)</button><button class="lib-tab" id="lt-papers" onclick="setLibTab('papers')">📚 Papers (<span id="cnt-p">0</span>)</button></div>
       <input type="text" class="search-input" id="lib-search" placeholder="Search…" oninput="renderLib()">
       <div id="lib-content"></div>
     </div>
-
-  </div><!-- /main -->
-</div><!-- /app-screen -->
-
-<!-- MODAL -->
-<div class="overlay" id="modal-ov" onclick="closeModalOv(event)">
-  <div class="modal">
-    <div class="modal-top">
-      <div class="modal-title" id="modal-title">—</div>
-      <button class="modal-close" onclick="closeModal()">✕</button>
-    </div>
-    <div id="modal-body"></div>
   </div>
 </div>
 
-<!-- TOAST -->
+<!-- MODAL -->
+<div class="overlay" id="modal-ov" onclick="closeModalOv(event)">
+  <div class="modal"><div class="modal-top"><div class="modal-title" id="modal-title">—</div><button class="modal-close" onclick="closeModal()">✕</button></div><div id="modal-body"></div></div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 // ─────────────────────────────────────────────────────────────────────────────
-// CONFIG — point this at your running backend
+// CONFIG
 const API_BASE = 'https://radiology-coach-production.up.railway.app';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // STATE
 let token = sessionStorage.getItem('rc_token') || null;
-let user  = JSON.parse(sessionStorage.getItem('rc_user') || 'null');
+let user = JSON.parse(sessionStorage.getItem('rc_user') || 'null');
 let libTab = 'reports';
 let recentReport = null;
 let recentDigest = null;
 let reportMode = 'a';
 let digestMode = 'title';
 let libData = { reports: [], papers: [] };
+let _toastTimer;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INIT
 window.addEventListener('DOMContentLoaded', () => {
-  if (token && user) bootApp();
-  else showLogin();
-
-  // Enter key in auth forms
-  ['l-email','l-pass'].forEach(id => {
-    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
-  });
-  ['r-name','r-email','r-pass'].forEach(id => {
-    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key==='Enter') doRegister(); });
-  });
+    if (token && user) bootApp();
+    else showLogin();
+    ['l-email', 'l-pass'].forEach(id => document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); }));
+    ['r-name', 'r-email', 'r-pass'].forEach(id => document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') doRegister(); }));
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // API HELPER
 async function api(method, path, body = null, auth = true) {
-  const headers = { 'Content-Type': 'application/json' };
-  // Always get fresh token from sessionStorage
-  const currentToken = sessionStorage.getItem('rc_token');
-  if (auth && currentToken) headers['Authorization'] = 'Bearer ' + currentToken;
-  const opts = { method, headers };
-  if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(API_BASE + path, opts);
-  if (res.status === 401) { doLogout(); throw new Error('Session expired'); }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.detail || `Error ${res.status}`);
-  return data;
+    const headers = { 'Content-Type': 'application/json' };
+    const currentToken = sessionStorage.getItem('rc_token');
+    if (auth && currentToken) headers['Authorization'] = 'Bearer ' + currentToken;
+    const opts = { method, headers };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(API_BASE + path, opts);
+    if (res.status === 401) { doLogout(); throw new Error('Session expired'); }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || `Error ${res.status}`);
+    return data;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AUTH
-function showLogin()    { document.getElementById('form-login').style.display=''; document.getElementById('form-register').style.display='none'; }
-function showRegister() { document.getElementById('form-login').style.display='none'; document.getElementById('form-register').style.display=''; }
+function showLogin() { document.getElementById('form-login').style.display = ''; document.getElementById('form-register').style.display = 'none'; }
+function showRegister() { document.getElementById('form-login').style.display = 'none'; document.getElementById('form-register').style.display = ''; }
 
 async function doLogin() {
-  const email = document.getElementById('l-email').value.trim();
-  const pass  = document.getElementById('l-pass').value;
-  const btn   = document.getElementById('login-btn');
-  const err   = document.getElementById('login-err');
-  err.classList.remove('show');
-  if (!email || !pass) { showAuthErr(err,'Please fill all fields'); return; }
-  btn.disabled = true; btn.textContent = 'Signing in…';
-  try {
-    const data = await api('POST', '/auth/login', { email, password: pass }, false);
-    authSuccess(data);
-  } catch(e) {
-    showAuthErr(err, e.message);
-    btn.disabled = false; btn.textContent = 'Sign In';
-  }
+    const email = document.getElementById('l-email').value.trim();
+    const pass = document.getElementById('l-pass').value;
+    const btn = document.getElementById('login-btn');
+    const err = document.getElementById('login-err');
+    err.classList.remove('show');
+    if (!email || !pass) { showAuthErr(err, 'Please fill all fields'); return; }
+    btn.disabled = true; btn.textContent = 'Signing in…';
+    try {
+        const data = await api('POST', '/auth/login', { email, password: pass }, false);
+        authSuccess(data);
+    } catch (e) {
+        showAuthErr(err, e.message);
+        btn.disabled = false; btn.textContent = 'Sign In';
+    }
 }
 
 async function doRegister() {
-  const name  = document.getElementById('r-name').value.trim();
-  const email = document.getElementById('r-email').value.trim();
-  const pass  = document.getElementById('r-pass').value;
-  const btn   = document.getElementById('reg-btn');
-  const err   = document.getElementById('reg-err');
-  err.classList.remove('show');
-  if (!email || !pass) { showAuthErr(err,'Please fill all required fields'); return; }
-  if (pass.length < 8)  { showAuthErr(err,'Password must be at least 8 characters'); return; }
-  btn.disabled = true; btn.textContent = 'Creating…';
-  try {
-    const data = await api('POST', '/auth/register', { email, password: pass, name }, false);
-    // Make sure authSuccess is called with the data
-    if (data && data.access_token) {
-      authSuccess(data);
-    } else {
-      throw new Error('Registration failed');
+    const name = document.getElementById('r-name').value.trim();
+    const email = document.getElementById('r-email').value.trim();
+    const pass = document.getElementById('r-pass').value;
+    const btn = document.getElementById('reg-btn');
+    const err = document.getElementById('reg-err');
+    err.classList.remove('show');
+    if (!email || !pass) { showAuthErr(err, 'Please fill all required fields'); return; }
+    if (pass.length < 8) { showAuthErr(err, 'Password must be at least 8 characters'); return; }
+    btn.disabled = true; btn.textContent = 'Creating…';
+    try {
+        const data = await api('POST', '/auth/register', { email, password: pass, name }, false);
+        if (data && data.access_token) authSuccess(data);
+        else throw new Error('Registration failed');
+    } catch (e) {
+        showAuthErr(err, e.message);
+        btn.disabled = false; btn.textContent = 'Create Account';
     }
-  } catch(e) {
-    showAuthErr(err, e.message);
-    btn.disabled = false; btn.textContent = 'Create Account';
-  }
 }
 
 function authSuccess(data) {
-  token = data.access_token;
-  user  = data.user;
-  sessionStorage.setItem('rc_token', token);
-  sessionStorage.setItem('rc_user',  JSON.stringify(user));
-  bootApp();
+    token = data.access_token;
+    user = data.user;
+    sessionStorage.setItem('rc_token', token);
+    sessionStorage.setItem('rc_user', JSON.stringify(user));
+    bootApp();
 }
 
 function bootApp() {
-  document.getElementById('auth-screen').style.display = 'none';
-  document.getElementById('app-screen').classList.add('show');
-  document.getElementById('user-name').textContent = user.name || user.email;
-  document.getElementById('user-avatar').textContent = (user.name || user.email || '?')[0].toUpperCase();
-  // Restore saved API key
-  const savedKey = sessionStorage.getItem('rc_ak') || '';
-  if (savedKey) { document.getElementById('api-key').value = savedKey; updateAkStatus(savedKey); }
-  loadLibrary();
-  loadTheme();
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app-screen').classList.add('show');
+    document.getElementById('user-name').textContent = user.name || user.email;
+    document.getElementById('user-avatar').textContent = (user.name || user.email || '?')[0].toUpperCase();
+    const savedKey = sessionStorage.getItem('rc_ak') || '';
+    if (savedKey) { document.getElementById('api-key').value = savedKey; updateAkStatus(savedKey); }
+    loadLibrary();
+    loadTheme();
 }
 
 function doLogout() {
-  token = null; user = null;
-  sessionStorage.clear();
-  document.getElementById('app-screen').classList.remove('show');
-  document.getElementById('auth-screen').style.display = '';
-  document.getElementById('l-email').value = '';
-  document.getElementById('l-pass').value = '';
-  showLogin();
+    token = null; user = null;
+    sessionStorage.clear();
+    document.getElementById('app-screen').classList.remove('show');
+    document.getElementById('auth-screen').style.display = '';
+    document.getElementById('l-email').value = '';
+    document.getElementById('l-pass').value = '';
+    showLogin();
 }
 
 function showAuthErr(el, msg) { el.textContent = msg; el.classList.add('show'); }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // API KEY
-function onApiKeyChange(val) {
-  sessionStorage.setItem('rc_ak', val);
-  updateAkStatus(val);
-}
+function onApiKeyChange(val) { sessionStorage.setItem('rc_ak', val); updateAkStatus(val); }
 function updateAkStatus(val) {
-  const dot = document.getElementById('ak-dot');
-  const txt = document.getElementById('ak-text');
-  // Accept DeepSeek (sk-), OpenRouter (sk-or-v1-), and OpenAI (sk-proj-)
-  if (val && (val.startsWith('sk-') || val.startsWith('sk-or-v1-') || val.startsWith('sk-proj-'))) {
-    dot.className='dot g'; txt.textContent='Ready ✓';
-  } else if (val) {
-    dot.className='dot r'; txt.textContent='Invalid format';
-  } else {
-    dot.className='dot r'; txt.textContent='Not set';
-  }
+    const dot = document.getElementById('ak-dot');
+    const txt = document.getElementById('ak-text');
+    if (val && (val.startsWith('sk-') || val.startsWith('sk-or-v1-') || val.startsWith('sk-proj-'))) {
+        dot.className = 'dot g'; txt.textContent = 'Ready ✓';
+    } else if (val) {
+        dot.className = 'dot r'; txt.textContent = 'Invalid format';
+    } else {
+        dot.className = 'dot r'; txt.textContent = 'Not set';
+    }
 }
-
-function toggleApiVis() {
-  const i = document.getElementById('api-key');
-  i.type = i.type==='password'?'text':'password';
-}
-function getApiKey() { return (sessionStorage.getItem('rc_ak')||'').trim(); }
+function toggleApiVis() { const i = document.getElementById('api-key'); i.type = i.type === 'password' ? 'text' : 'password'; }
+function getApiKey() { return (sessionStorage.getItem('rc_ak') || '').trim(); }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TABS
 function switchTab(name) {
-  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['report','digest','library'][i]===name));
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  const map = {report:'panel-report',digest:'panel-digest',library:'panel-library'};
-  document.getElementById(map[name]).classList.add('active');
-  if (name==='library') { loadLibrary(); }
+    const names = ['report', 'digest', 'library'];
+    document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', names[i] === name));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    const map = { report: 'panel-report', digest: 'panel-digest', library: 'panel-library' };
+    document.getElementById(map[name]).classList.add('active');
+    if (name === 'library') loadLibrary();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // REPORT COACH
 function setReportMode(m) {
-  reportMode = m;
-  document.getElementById('pill-a').classList.toggle('active',m==='a');
-  document.getElementById('pill-b').classList.toggle('active',m==='b');
-  const hint = document.getElementById('mode-hint');
-  const lbl  = document.getElementById('r-label');
-  if (m==='a') {
-    hint.innerHTML='<b>Mode A:</b> Paste rough impression → Polished Impression + Top 3 Differentials + Feedback';
-    lbl.textContent='Paste Rough Impression or Diagnostic Summary';
-    document.getElementById('r-input').placeholder='e.g. Liver lesion. Uncertain if benign. Spleen enlarged. Bilateral pleural effusions small.';
-  } else {
-    hint.innerHTML='<b>Mode B:</b> Paste full draft report → Complete polished report + Differentials + Feedback';
-    lbl.textContent='Paste Full Draft Report';
-    document.getElementById('r-input').placeholder='Paste your full radiology report draft here…';
-  }
+    reportMode = m;
+    document.getElementById('pill-a').classList.toggle('active', m === 'a');
+    document.getElementById('pill-b').classList.toggle('active', m === 'b');
+    const hint = document.getElementById('mode-hint');
+    const lbl = document.getElementById('r-label');
+    if (m === 'a') {
+        hint.innerHTML = '<b>Mode A:</b> Paste rough impression → Polished Impression + Top 3 Differentials + Feedback';
+        lbl.textContent = 'Paste Rough Impression or Diagnostic Summary';
+        document.getElementById('r-input').placeholder = 'e.g. Liver lesion. Uncertain if benign. Spleen enlarged. Bilateral pleural effusions small.';
+    } else {
+        hint.innerHTML = '<b>Mode B:</b> Paste full draft report → Complete polished report + Differentials + Feedback';
+        lbl.textContent = 'Paste Full Draft Report';
+        document.getElementById('r-input').placeholder = 'Paste your full radiology report draft here…';
+    }
 }
 
 async function polishReport() {
-  const input = document.getElementById('r-input').value.trim();
-  if (!input) { toast('Enter a report or impression.','err'); return; }
-  const key = getApiKey();
-  if (!key) { toast('Set your DeepSeek API key first.','err'); return; }
-
-  const btn = document.getElementById('polish-btn');
-  btn.disabled = true;
-  document.getElementById('r-loading').classList.add('show');
-  document.getElementById('r-result').classList.remove('show');
-
-  try {
-    const data = await api('POST', '/reports/polish', {
-      mode: reportMode,
-      subspecialty: document.getElementById('subspecialty').value,
-      modality: document.getElementById('modality').value,
-      input_text: input,
-      api_key: key,
-      save: document.getElementById('r-save').checked,
-    });
-
-    document.getElementById('r-res-imp').textContent  = data.impression || '—';
-    document.getElementById('r-res-diff').textContent = data.differentials || '—';
-    document.getElementById('r-res-fb').textContent   = data.feedback || '—';
-    document.getElementById('r-result').classList.add('show');
-
-    recentReport = data;
-    const saveBtn = document.getElementById('r-save-btn');
-    if (data.saved) {
-      saveBtn.textContent = '✓ Saved';
-      saveBtn.disabled = true;
-      updateLibCount();
-    } else {
-      saveBtn.textContent = '💾 Save';
-      saveBtn.disabled = false;
-    }
-    if (data.saved) toast('Report polished & saved ✓','ok');
-    else toast('Report polished ✓','ok');
-  } catch(e) { toast('Error: '+e.message,'err'); }
-  finally { btn.disabled=false; document.getElementById('r-loading').classList.remove('show'); }
+    const input = document.getElementById('r-input').value.trim();
+    if (!input) { toast('Enter a report or impression.', 'err'); return; }
+    const key = getApiKey();
+    if (!key) { toast('Set your API key first.', 'err'); return; }
+    const btn = document.getElementById('polish-btn');
+    btn.disabled = true;
+    document.getElementById('r-loading').classList.add('show');
+    document.getElementById('r-result').classList.remove('show');
+    try {
+        const data = await api('POST', '/reports/polish', {
+            mode: reportMode, subspecialty: document.getElementById('subspecialty').value,
+            modality: document.getElementById('modality').value, input_text: input,
+            api_key: key, save: document.getElementById('r-save').checked,
+        });
+        document.getElementById('r-res-imp').textContent = data.impression || '—';
+        document.getElementById('r-res-diff').textContent = data.differentials || '—';
+        document.getElementById('r-res-fb').textContent = data.feedback || '—';
+        document.getElementById('r-result').classList.add('show');
+        recentReport = data;
+        const saveBtn = document.getElementById('r-save-btn');
+        if (data.saved) {
+            saveBtn.textContent = '✓ Saved'; saveBtn.disabled = true;
+            updateLibCount();
+            toast('Report polished & saved ✓', 'ok');
+        } else {
+            saveBtn.textContent = '💾 Save'; saveBtn.disabled = false;
+            toast('Report polished ✓', 'ok');
+        }
+    } catch (e) { toast('Error: ' + e.message, 'err'); }
+    finally { btn.disabled = false; document.getElementById('r-loading').classList.remove('show'); }
 }
 
 async function saveCurrentReport() {
-  if (!recentReport || recentReport.saved) return;
-  const key = getApiKey();
-  if (!key) { toast('Set your DeepSeek API key.','err'); return; }
-  try {
-    // Re-save via the API with save=true
-    const data = await api('POST', '/reports/polish', {
-      mode: reportMode,
-      subspecialty: document.getElementById('subspecialty').value,
-      modality: document.getElementById('modality').value,
-      input_text: document.getElementById('r-input').value.trim(),
-      api_key: key,
-      save: true,
-    });
-    recentReport = data;
-    document.getElementById('r-save-btn').textContent='✓ Saved';
-    document.getElementById('r-save-btn').disabled=true;
-    updateLibCount();
-    toast('Saved to library ✓','ok');
-  } catch(e) { toast('Error: '+e.message,'err'); }
+    if (!recentReport || recentReport.saved) return;
+    const key = getApiKey();
+    if (!key) { toast('Set your API key.', 'err'); return; }
+    try {
+        const data = await api('POST', '/reports/polish', {
+            mode: reportMode, subspecialty: document.getElementById('subspecialty').value,
+            modality: document.getElementById('modality').value,
+            input_text: document.getElementById('r-input').value.trim(),
+            api_key: key, save: true,
+        });
+        recentReport = data;
+        document.getElementById('r-save-btn').textContent = '✓ Saved';
+        document.getElementById('r-save-btn').disabled = true;
+        updateLibCount();
+        toast('Saved to library ✓', 'ok');
+    } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
 
-function clearReport() {
-  document.getElementById('r-input').value='';
-  document.getElementById('r-result').classList.remove('show');
-  recentReport=null;
-}
+function clearReport() { document.getElementById('r-input').value = ''; document.getElementById('r-result').classList.remove('show'); recentReport = null; }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PAPER DIGEST
 function setDigestMode(m) {
-  digestMode=m;
-  ['title','url','text'].forEach(t=>document.getElementById('dt-'+t).classList.toggle('active',t===m));
-  const inp=document.getElementById('d-input');
-  const lbl=document.getElementById('d-label');
-  if(m==='title'){lbl.textContent='Paper Title or Topic';inp.placeholder='e.g. LI-RADS v2018 CT/MRI criteria for HCC';inp.style.minHeight='80px';}
-  else if(m==='url'){lbl.textContent='URL or DOI';inp.placeholder='e.g. https://doi.org/10.1148/...';inp.style.minHeight='60px';}
-  else{lbl.textContent='Paste Abstract or Text';inp.placeholder='Paste the full abstract…';inp.style.minHeight='160px';}
+    digestMode = m;
+    ['title', 'url', 'text'].forEach(t => document.getElementById('dt-' + t).classList.toggle('active', t === m));
+    const inp = document.getElementById('d-input');
+    const lbl = document.getElementById('d-label');
+    if (m === 'title') { lbl.textContent = 'Paper Title or Topic'; inp.placeholder = 'e.g. LI-RADS v2018 CT/MRI criteria for HCC'; inp.style.minHeight = '80px'; }
+    else if (m === 'url') { lbl.textContent = 'URL or DOI'; inp.placeholder = 'e.g. https://doi.org/10.1148/...'; inp.style.minHeight = '60px'; }
+    else { lbl.textContent = 'Paste Abstract or Text'; inp.placeholder = 'Paste the full abstract…'; inp.style.minHeight = '160px'; }
 }
 
 async function generateDigest() {
-  const input=document.getElementById('d-input').value.trim();
-  if(!input){toast('Enter paper info.','err');return;}
-  const key=getApiKey();
-  if(!key){toast('Set your DeepSeek API key.','err');return;}
-
-  const btn=document.getElementById('digest-btn');
-  btn.disabled=true;
-  document.getElementById('d-loading').classList.add('show');
-  document.getElementById('d-result').classList.remove('show');
-
-  try {
-    const data=await api('POST','/papers/digest',{
-      input_mode:digestMode,
-      input_text:input,
-      api_key:key,
-      save:document.getElementById('d-save').checked,
-    });
-    document.getElementById('d-res-sum').textContent  = data.summary||'—';
-    document.getElementById('d-res-find').textContent = data.findings||'—';
-    document.getElementById('d-res-impl').textContent = data.implications||'—';
-    document.getElementById('d-result').classList.add('show');
-    recentDigest=data;
-    const saveBtn=document.getElementById('d-save-btn');
-    if(data.saved){saveBtn.textContent='✓ Saved';saveBtn.disabled=true;updateLibCount();}
-    else{saveBtn.textContent='💾 Save';saveBtn.disabled=false;}
-    toast(data.saved?'Digest generated & saved ✓':'Digest generated ✓','ok');
-  } catch(e){toast('Error: '+e.message,'err');}
-  finally{btn.disabled=false;document.getElementById('d-loading').classList.remove('show');}
+    const input = document.getElementById('d-input').value.trim();
+    if (!input) { toast('Enter paper info.', 'err'); return; }
+    const key = getApiKey();
+    if (!key) { toast('Set your API key.', 'err'); return; }
+    const btn = document.getElementById('digest-btn');
+    btn.disabled = true;
+    document.getElementById('d-loading').classList.add('show');
+    document.getElementById('d-result').classList.remove('show');
+    try {
+        const data = await api('POST', '/papers/digest', {
+            input_mode: digestMode, input_text: input, api_key: key, save: document.getElementById('d-save').checked,
+        });
+        document.getElementById('d-res-sum').textContent = data.summary || '—';
+        document.getElementById('d-res-find').textContent = data.findings || '—';
+        document.getElementById('d-res-impl').textContent = data.implications || '—';
+        document.getElementById('d-result').classList.add('show');
+        recentDigest = data;
+        const saveBtn = document.getElementById('d-save-btn');
+        if (data.saved) { saveBtn.textContent = '✓ Saved'; saveBtn.disabled = true; updateLibCount(); toast('Digest generated & saved ✓', 'ok'); }
+        else { saveBtn.textContent = '💾 Save'; saveBtn.disabled = false; toast('Digest generated ✓', 'ok'); }
+    } catch (e) { toast('Error: ' + e.message, 'err'); }
+    finally { btn.disabled = false; document.getElementById('d-loading').classList.remove('show'); }
 }
 
 async function saveCurrentDigest() {
-  if(!recentDigest||recentDigest.saved)return;
-  const key=getApiKey();
-  if(!key){toast('Set your DeepSeek API key.','err');return;}
-  try {
-    const data=await api('POST','/papers/digest',{
-      input_mode:digestMode,
-      input_text:document.getElementById('d-input').value.trim(),
-      api_key:key,
-      save:true,
-    });
-    recentDigest=data;
-    document.getElementById('d-save-btn').textContent='✓ Saved';
-    document.getElementById('d-save-btn').disabled=true;
-    updateLibCount();
-    toast('Saved to library ✓','ok');
-  } catch(e){toast('Error: '+e.message,'err');}
+    if (!recentDigest || recentDigest.saved) return;
+    const key = getApiKey();
+    if (!key) { toast('Set your API key.', 'err'); return; }
+    try {
+        const data = await api('POST', '/papers/digest', {
+            input_mode: digestMode, input_text: document.getElementById('d-input').value.trim(),
+            api_key: key, save: true,
+        });
+        recentDigest = data;
+        document.getElementById('d-save-btn').textContent = '✓ Saved';
+        document.getElementById('d-save-btn').disabled = true;
+        updateLibCount();
+        toast('Saved to library ✓', 'ok');
+    } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
 
-function clearDigest() {
-  document.getElementById('d-input').value='';
-  document.getElementById('d-result').classList.remove('show');
-  recentDigest=null;
-}
+function clearDigest() { document.getElementById('d-input').value = ''; document.getElementById('d-result').classList.remove('show'); recentDigest = null; }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LIBRARY
 async function loadLibrary() {
-  try {
-    const [reports, papers] = await Promise.all([
-      api('GET','/reports'),
-      api('GET','/papers'),
-    ]);
-    libData.reports = reports;
-    libData.papers  = papers;
-    updateLibCount();
-    renderLib();
-  } catch(e){ toast('Error loading library: '+e.message,'err'); }
+    try {
+        const [reports, papers] = await Promise.all([api('GET', '/reports'), api('GET', '/papers')]);
+        libData.reports = reports; libData.papers = papers;
+        updateLibCount(); renderLib();
+    } catch (e) { toast('Error loading library: ' + e.message, 'err'); }
 }
 
 function updateLibCount() {
-  const total = libData.reports.length + libData.papers.length;
-  document.getElementById('lib-tab-cnt').textContent = total;
-  document.getElementById('cnt-r').textContent = libData.reports.length;
-  document.getElementById('cnt-p').textContent = libData.papers.length;
+    const total = libData.reports.length + libData.papers.length;
+    document.getElementById('lib-tab-cnt').textContent = total;
+    document.getElementById('cnt-r').textContent = libData.reports.length;
+    document.getElementById('cnt-p').textContent = libData.papers.length;
 }
 
-function setLibTab(t) {
-  libTab=t;
-  document.getElementById('lt-reports').classList.toggle('active',t==='reports');
-  document.getElementById('lt-papers').classList.toggle('active',t==='papers');
-  renderLib();
-}
+function setLibTab(t) { libTab = t; document.getElementById('lt-reports').classList.toggle('active', t === 'reports'); document.getElementById('lt-papers').classList.toggle('active', t === 'papers'); renderLib(); }
 
 function renderLib() {
-  const q=(document.getElementById('lib-search')?.value||'').toLowerCase();
-  const items=(libTab==='reports'?libData.reports:libData.papers)
-    .filter(i=>!q||JSON.stringify(i).toLowerCase().includes(q));
-  const el=document.getElementById('lib-content');
-
-  if(!items.length){
-    el.innerHTML=`<div class="lib-empty">
-      <div class="lib-empty-icon">${libTab==='reports'?'📋':'📚'}</div>
-      <div class="lib-empty-text">No saved ${libTab} yet.</div>
-    </div>`;return;
-  }
-
-  el.innerHTML='<div class="lib-grid">'+items.map(item=>{
-    const ts=item.created_at?new Date(item.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
-    let title,meta,preview;
-    if(libTab==='reports'){
-      title=item.title||`${item.subspecialty}·${item.modality}`;
-      meta=`${item.mode==='impression_only'?'Mode A':'Mode B'} · ${ts}`;
-      preview=item.impression||item.input_text||'';
-    }else{
-      title=item.title||'Paper Digest';
-      meta=ts;
-      preview=item.summary||'';
-    }
-    return `<div class="lib-card" onclick="openLibItem(${item.id},'${libTab}')">
-      <div class="lib-card-top">
-        <div>
-          <div class="lib-card-title">${esc(title)}</div>
-          <div class="lib-card-meta">${esc(meta)}</div>
-        </div>
-        <div class="lib-card-btns" onclick="event.stopPropagation()">
-          <button class="btn-sm del" onclick="deleteItem(${item.id},'${libTab}')">Delete</button>
-        </div>
-      </div>
-      <div class="lib-card-preview">${esc(preview)}</div>
-    </div>`;
-  }).join('')+'</div>';
+    const q = (document.getElementById('lib-search')?.value || '').toLowerCase();
+    const items = (libTab === 'reports' ? libData.reports : libData.papers).filter(i => !q || JSON.stringify(i).toLowerCase().includes(q));
+    const el = document.getElementById('lib-content');
+    if (!items.length) { el.innerHTML = `<div class="lib-empty"><div class="lib-empty-icon">${libTab === 'reports' ? '📋' : '📚'}</div><div class="lib-empty-text">No saved ${libTab} yet.</div></div>`; return; }
+    el.innerHTML = '<div class="lib-grid">' + items.map(item => {
+        const ts = item.created_at ? new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+        let title, meta, preview;
+        if (libTab === 'reports') { title = item.title || `${item.subspecialty}·${item.modality}`; meta = `${item.mode === 'impression_only' ? 'Mode A' : 'Mode B'} · ${ts}`; preview = item.impression || item.input_text || ''; }
+        else { title = item.title || 'Paper Digest'; meta = ts; preview = item.summary || ''; }
+        return `<div class="lib-card" onclick="openLibItem(${item.id},'${libTab}')"><div class="lib-card-top"><div><div class="lib-card-title">${esc(title)}</div><div class="lib-card-meta">${esc(meta)}</div></div><div class="lib-card-btns" onclick="event.stopPropagation()"><button class="btn-sm del" onclick="deleteItem(${item.id},'${libTab}')">Delete</button></div></div><div class="lib-card-preview">${esc(preview)}</div></div>`;
+    }).join('') + '</div>';
 }
 
 function openLibItem(id, type) {
-  const items = type === 'reports' ? libData.reports : libData.papers;
-  const item = items.find(i => i.id === id);
-  if (!item) return;
-  const ts = item.created_at ? new Date(item.created_at).toLocaleString() : '';
-  document.getElementById('modal-title').textContent = item.title || 'Item';
-  let body = '';
-  if (type === 'reports') {
-    body = `
-      ${ts ? `<div class="modal-section"><div class="modal-lbl">Date</div><p style="font-size:12px;color:var(--text3);font-family:var(--mono)">${ts}</p></div>` : ''}
-      <div class="modal-section"><div class="modal-lbl">Polished Impression</div><div class="modal-val">${esc(item.impression || '')}</div></div>
-      <div class="modal-section"><div class="modal-lbl">Top 3 Differentials</div><div class="modal-val">${esc(item.differentials || '')}</div></div>
-      <div class="modal-section"><div class="modal-lbl">Feedback</div><div class="modal-val">${esc(item.feedback || '')}</div></div>
-      <div class="modal-section"><button class="btn-primary" style="width:100%; margin-top:10px;" onclick='exportToWord(${JSON.stringify(item).replace(/'/g, "&#39;")}, "report")'>📄 Export to Word</button></div>`;
-  } else {
-    // For papers - also remove input section
-    body = `
-      ${ts ? `<div class="modal-section"><div class="modal-lbl">Date</div><p style="font-size:12px;color:var(--text3);font-family:var(--mono)">${ts}</p></div>` : ''}
-      <div class="modal-section"><div class="modal-lbl">Summary</div><div class="modal-val">${esc(item.summary || '')}</div></div>
-      <div class="modal-section"><div class="modal-lbl">Key Findings</div><div class="modal-val">${esc(item.findings || '')}</div></div>
-      <div class="modal-section"><div class="modal-lbl">Clinical Implications</div><div class="modal-val">${esc(item.implications || '')}</div></div>
-      <div class="modal-section"><button class="btn-primary" style="width:100%; margin-top:10px;" onclick='exportToWord(${JSON.stringify(item).replace(/'/g, "&#39;")}, "paper")'>📄 Export to Word</button></div>`;
-  }
-  document.getElementById('modal-body').innerHTML = body;
-  document.getElementById('modal-ov').classList.add('show');
+    const items = type === 'reports' ? libData.reports : libData.papers;
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    const ts = item.created_at ? new Date(item.created_at).toLocaleString() : '';
+    document.getElementById('modal-title').textContent = item.title || 'Item';
+    const safeItem = JSON.stringify(item).replace(/'/g, "&#39;");
+    let body = '';
+    if (type === 'reports') {
+        body = `${ts ? `<div class="modal-section"><div class="modal-lbl">Date</div><p style="font-size:12px;color:var(--text3);font-family:var(--mono)">${ts}</p></div>` : ''}
+            <div class="modal-section"><div class="modal-lbl">Polished Impression</div><div class="modal-val">${esc(item.impression || '')}</div></div>
+            <div class="modal-section"><div class="modal-lbl">Top 3 Differentials</div><div class="modal-val">${esc(item.differentials || '')}</div></div>
+            <div class="modal-section"><div class="modal-lbl">Feedback</div><div class="modal-val">${esc(item.feedback || '')}</div></div>
+            <div class="modal-section"><button class="btn-primary" style="width:100%;margin-top:10px" onclick='exportToWord(${safeItem},"report")'>📄 Export to Word</button></div>`;
+    } else {
+        body = `${ts ? `<div class="modal-section"><div class="modal-lbl">Date</div><p style="font-size:12px;color:var(--text3);font-family:var(--mono)">${ts}</p></div>` : ''}
+            <div class="modal-section"><div class="modal-lbl">Summary</div><div class="modal-val">${esc(item.summary || '')}</div></div>
+            <div class="modal-section"><div class="modal-lbl">Key Findings</div><div class="modal-val">${esc(item.findings || '')}</div></div>
+            <div class="modal-section"><div class="modal-lbl">Clinical Implications</div><div class="modal-val">${esc(item.implications || '')}</div></div>
+            <div class="modal-section"><button class="btn-primary" style="width:100%;margin-top:10px" onclick='exportToWord(${safeItem},"paper")'>📄 Export to Word</button></div>`;
+    }
+    document.getElementById('modal-body').innerHTML = body;
+    document.getElementById('modal-ov').classList.add('show');
 }
 
-async function deleteItem(id,type) {
-  if(!confirm('Delete this item?'))return;
-  try{
-    await api('DELETE',`/${type==='reports'?'reports':'papers'}/${id}`);
-    if(type==='reports') libData.reports=libData.reports.filter(i=>i.id!==id);
-    else libData.papers=libData.papers.filter(i=>i.id!==id);
-    updateLibCount();
-    renderLib();
-    toast('Deleted ✓','ok');
-  }catch(e){toast('Error: '+e.message,'err');}
+async function deleteItem(id, type) {
+    if (!confirm('Delete this item?')) return;
+    try {
+        await api('DELETE', `/${type === 'reports' ? 'reports' : 'papers'}/${id}`);
+        if (type === 'reports') libData.reports = libData.reports.filter(i => i.id !== id);
+        else libData.papers = libData.papers.filter(i => i.id !== id);
+        updateLibCount(); renderLib(); toast('Deleted ✓', 'ok');
+    } catch (e) { toast('Error: ' + e.message, 'err'); }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXPORT — HTML to Word (Works without external libraries)
+function exportToWord(item, type) {
+    const title = item.title || (type === 'report' ? 'Radiology Report' : 'Paper Digest');
+    const date = new Date().toLocaleString();
+    let content = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>${escapeHtml(title)}</title>
+<style>
+body { font-family: 'Calibri', Arial, sans-serif; margin: 2.54cm; line-height: 1.5; }
+h1 { color: #2c3e50; border-bottom: 3px solid #4d9fff; text-align: center; }
+.date { color: #7f8c8d; text-align: center; margin-bottom: 30px; }
+.section-title { font-weight: bold; color: #4d9fff; margin-top: 20px; border-left: 3px solid #4d9fff; padding-left: 12px; }
+.content { margin-bottom: 20px; white-space: pre-wrap; }
+.footer { margin-top: 40px; border-top: 1px solid #ddd; text-align: center; font-size: 9pt; color: #95a5a6; }
+</style>
+</head>
+<body>
+    <h1>${escapeHtml(title)}</h1>
+    <div class="date">Generated: ${escapeHtml(date)} | Radiology Assistant</div>`;
+    if (type === 'report') {
+        content += `
+    <div class="section-title">✦ Polished Impression</div>
+    <div class="content">${escapeHtml(item.impression || '—')}</div>
+    <div class="section-title">◈ Top 3 Differentials</div>
+    <div class="content">${escapeHtml((item.differentials || '—').replace(/\n/g, '<br>'))}</div>
+    <div class="section-title">◎ Feedback & Rationale</div>
+    <div class="content">${escapeHtml(item.feedback || '—')}</div>
+    <div class="section-title">📋 Metadata</div>
+    <div class="content">Subspecialty: ${escapeHtml(item.subspecialty || 'General')}<br>Modality: ${escapeHtml(item.modality || 'Any')}</div>`;
+    } else {
+        content += `
+    <div class="section-title">✦ Summary</div>
+    <div class="content">${escapeHtml(item.summary || '—')}</div>
+    <div class="section-title">◈ Key Findings</div>
+    <div class="content">${escapeHtml((item.findings || '—').replace(/\n/g, '<br>'))}</div>
+    <div class="section-title">◎ Clinical Implications</div>
+    <div class="content">${escapeHtml(item.implications || '—')}</div>`;
+    }
+    content += `<div class="footer">Generated by Radiology Assistant — AI-Powered Radiology Training Workspace</div></body></html>`;
+    const blob = new Blob([content], { type: 'application/msword' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${title.replace(/[^a-z0-9]/gi, '_')}.doc`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+    toast(`Exported "${title}" ✓`, 'ok');
 }
 
 function exportLib() {
-  const all={reports:libData.reports,papers:libData.papers};
-  const blob=new Blob([JSON.stringify(all,null,2)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`radiology_coach_export_${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
-  toast('Library exported ✓','ok');
+    const blob = new Blob([JSON.stringify({ reports: libData.reports, papers: libData.papers }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `radiology_coach_export_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click(); URL.revokeObjectURL(a.href);
+    toast('Library exported as JSON ✓', 'ok');
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// COPY
+function exportAllToWord() {
+    const allItems = [...libData.reports.map(r => ({ ...r, _type: 'report' })), ...libData.papers.map(p => ({ ...p, _type: 'paper' }))];
+    if (!allItems.length) { toast('No items to export.', 'err'); return; }
+    let combinedContent = '';
+    allItems.forEach((item, idx) => {
+        const title = item.title || (item._type === 'report' ? 'Radiology Report' : 'Paper Digest');
+        const date = item.created_at ? new Date(item.created_at).toLocaleString() : '';
+        combinedContent += `<div style="page-break-after: always;">
+            <h1>${idx + 1}. ${escapeHtml(title)}</h1>
+            <div class="date">${escapeHtml(date)}</div>`;
+        if (item._type === 'report') {
+            combinedContent += `<div class="section-title">✦ Polished Impression</div><div class="content">${escapeHtml(item.impression || '—')}</div>
+            <div class="section-title">◈ Top 3 Differentials</div><div class="content">${escapeHtml((item.differentials || '—').replace(/\n/g, '<br>'))}</div>
+            <div class="section-title">◎ Feedback</div><div class="content">${escapeHtml(item.feedback || '—')}</div>`;
+        } else {
+            combinedContent += `<div class="section-title">✦ Summary</div><div class="content">${escapeHtml(item.summary || '—')}</div>
+            <div class="section-title">◈ Key Findings</div><div class="content">${escapeHtml((item.findings || '—').replace(/\n/g, '<br>'))}</div>
+            <div class="section-title">◎ Clinical Implications</div><div class="content">${escapeHtml(item.implications || '—')}</div>`;
+        }
+        combinedContent += `<hr></div>`;
+    });
+    const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Radiology Assistant Export</title>
+    <style>body{font-family:Calibri,Arial;margin:40px}h1{color:#2c3e50;border-bottom:2px solid #4d9fff}.date{color:#7f8c8d}.section-title{font-weight:bold;color:#4d9fff;margin-top:20px}.content{white-space:pre-wrap}hr{margin:30px 0}</style>
+    </head><body><h1>Radiology Assistant - Complete Export</h1><div class="date">Exported: ${new Date().toLocaleString()} | Items: ${allItems.length}</div>${combinedContent}</body></html>`;
+    const blob = new Blob([fullHtml], { type: 'application/msword' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `radiology_coach_all_${new Date().toISOString().slice(0, 10)}.doc`;
+    a.click(); URL.revokeObjectURL(a.href);
+    toast(`Exported all ${allItems.length} items ✓`, 'ok');
+}
+
 function copyResult(type) {
-  let text='';
-  if(type==='report'&&recentReport){
-    text=`POLISHED IMPRESSION:\n${recentReport.impression}\n\nTOP 3 DIFFERENTIALS:\n${recentReport.differentials}\n\nFEEDBACK:\n${recentReport.feedback}`;
-  }else if(type==='digest'&&recentDigest){
-    text=`SUMMARY:\n${recentDigest.summary}\n\nKEY FINDINGS:\n${recentDigest.findings}\n\nCLINICAL IMPLICATIONS:\n${recentDigest.implications}`;
-  }
-  if(text)navigator.clipboard.writeText(text).then(()=>toast('Copied ✓','ok'));
+    let text = '';
+    if (type === 'report' && recentReport) text = `POLISHED IMPRESSION:\n${recentReport.impression}\n\nTOP 3 DIFFERENTIALS:\n${recentReport.differentials}\n\nFEEDBACK:\n${recentReport.feedback}`;
+    else if (type === 'digest' && recentDigest) text = `SUMMARY:\n${recentDigest.summary}\n\nKEY FINDINGS:\n${recentDigest.findings}\n\nCLINICAL IMPLICATIONS:\n${recentDigest.implications}`;
+    if (text) navigator.clipboard.writeText(text).then(() => toast('Copied ✓', 'ok'));
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MODAL
-function closeModal(){ document.getElementById('modal-ov').classList.remove('show'); }
-function closeModalOv(e){ if(e.target===document.getElementById('modal-ov'))closeModal(); }
+function closeModal() { document.getElementById('modal-ov').classList.remove('show'); }
+function closeModalOv(e) { if (e.target === document.getElementById('modal-ov')) closeModal(); }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TOAST
-let _tt;
-function toast(msg,type=''){
-  const el=document.getElementById('toast');
-  el.textContent=msg; el.className='toast show'+(type?' '+type:'');
-  clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('show'),2800);
+function toast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.textContent = msg; el.className = 'toast show' + (type ? ' ' + type : '');
+    clearTimeout(_toastTimer); _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// UTILS
-function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-// ========== WORD EXPORT FUNCTIONS ==========
-
-// Export single item to Word
-function exportToWord(item, type) {
-    const title = item.title || (type === 'report' ? 'Radiology Report' : 'Paper Digest');
-    const date = item.created_at ? new Date(item.created_at).toLocaleString() : new Date().toLocaleString();
-    
-    let content = `<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>${escapeHtml(title)}</title>
-<style>
-    body { font-family: 'Calibri', Arial, sans-serif; margin: 40px; line-height: 1.6; }
-    h1 { color: #2c3e50; border-bottom: 2px solid #4d9fff; padding-bottom: 10px; }
-    .meta { color: #7f8c8d; font-size: 12px; margin-bottom: 30px; }
-    .section { margin-bottom: 25px; }
-    .section-title { font-weight: bold; color: #4d9fff; text-transform: uppercase; margin-bottom: 10px; }
-    .content { background: #f9f9f9; padding: 15px; border-radius: 5px; white-space: pre-wrap; }
-    footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 11px; color: #95a5a6; text-align: center; }
-</style>
-</head>
-<body>
-    <h1>${escapeHtml(title)}</h1>
-    <div class="meta">Generated: ${escapeHtml(date)} | Radiology Assistant</div>`;
-    
-    if (type === 'report') {
-        // REMOVED: ORIGINAL INPUT section
-        content += `
-    <div class="section"><div class="section-title">◈ TOP 3 DIFFERENTIALS</div><div class="content">${escapeHtml(item.differentials || '—')}</div></div>
-    <div class="section"><div class="section-title">◎ FEEDBACK & RATIONALE</div><div class="content">${escapeHtml(item.feedback || '—')}</div></div>
-    <div class="section"><div class="section-title">📋 METADATA</div><div class="content">Subspecialty: ${escapeHtml(item.subspecialty || 'General')}<br>Modality: ${escapeHtml(item.modality || 'Any')}</div></div>`;
-    } else {
-        content += `
-    <div class="section"><div class="section-title">✦ SUMMARY</div><div class="content">${escapeHtml(item.summary || '—')}</div></div>
-    <div class="section"><div class="section-title">◈ KEY FINDINGS</div><div class="content">${escapeHtml(item.findings || '—')}</div></div>
-    <div class="section"><div class="section-title">◎ CLINICAL IMPLICATIONS</div><div class="content">${escapeHtml(item.implications || '—')}</div></div>`;
-    }
-    
-    content += `<footer>Generated by Radiology Assistant — AI-Powered Radiology Training Workspace</footer></body></html>`;
-    
-    const blob = new Blob([content], { type: 'application/msword' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `${title.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.doc`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(a.href);
-    toast(`Exported "${title}" to Word ✓`, 'ok');
-}
-
-// Export all items to Word
-function exportAllToWord() {
-    const allItems = [...libData.reports, ...libData.papers];
-    if (allItems.length === 0) {
-        toast('No items to export', 'err');
-        return;
-    }
-    
-    let combinedContent = '';
-    allItems.forEach((item, index) => {
-        const type = item.impression !== undefined ? 'report' : 'paper';
-        const title = item.title || (type === 'report' ? 'Radiology Report' : 'Paper Digest');
-        const date = item.created_at ? new Date(item.created_at).toLocaleString() : new Date().toLocaleString();
-        
-        combinedContent += `
-            <div style="page-break-after: always;">
-                <h1>${index + 1}. ${escapeHtml(title)}</h1>
-                <div class="meta">Generated: ${date} | Radiology Assistant</div>
-                ${type === 'report' ? `
-                    <div class="section"><div class="section-title">✦ POLISHED IMPRESSION</div><div class="content">${escapeHtml(item.impression || '—')}</div></div>
-                    <div class="section"><div class="section-title">◈ TOP 3 DIFFERENTIALS</div><div class="content">${escapeHtml(item.differentials || '—')}</div></div>
-                    <div class="section"><div class="section-title">◎ FEEDBACK</div><div class="content">${escapeHtml(item.feedback || '—')}</div></div>
-                ` : `
-                    <div class="section"><div class="section-title">✦ SUMMARY</div><div class="content">${escapeHtml(item.summary || '—')}</div></div>
-                    <div class="section"><div class="section-title">◈ KEY FINDINGS</div><div class="content">${escapeHtml(item.findings || '—')}</div></div>
-                    <div class="section"><div class="section-title">◎ CLINICAL IMPLICATIONS</div><div class="content">${escapeHtml(item.implications || '—')}</div></div>
-                `}
-                <hr>
-            </div>`;
-    });
-    
-    const fullHtml = `<!DOCTYPE html>
-    <html><head><meta charset="UTF-8"><title>Radiology Assistant Export</title>
-    <style>
-        body { font-family: Calibri, Arial, sans-serif; margin: 40px; line-height: 1.6; }
-        h1 { color: #2c3e50; border-bottom: 2px solid #4d9fff; }
-        .meta { color: #7f8c8d; font-size: 12px; margin-bottom: 20px; }
-        .section { margin-bottom: 20px; }
-        .section-title { font-weight: bold; color: #4d9fff; text-transform: uppercase; margin-bottom: 8px; }
-        .content { background: #f9f9f9; padding: 12px; border-radius: 5px; white-space: pre-wrap; }
-        hr { margin: 30px 0; }
-    </style>
-    </head><body>
-    <h1>Radiology Assistant - Complete Export</h1>
-    <div class="meta">Exported: ${new Date().toLocaleString()} | Total Items: ${allItems.length}</div>
-    ${combinedContent}
-    </body></html>`;
-    
-    const blob = new Blob([fullHtml], { type: 'application/msword' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `radiology_coach_export_all_${new Date().toISOString().slice(0,10)}.doc`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    toast(`Exported all ${allItems.length} items to Word ✓`, 'ok');
-}
-
-
-// ========== UTILITY FUNCTIONS ==========
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    });
-}
-
-// ========== WORD EXPORT FUNCTIONS ==========
-
-// Export single item to Word
-function exportToWord(item, type) {
-    const title = item.title || (type === 'report' ? 'Radiology Report' : 'Paper Digest');
-    const date = item.created_at ? new Date(item.created_at).toLocaleString() : new Date().toLocaleString();
-    
-    let content = `<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>${escapeHtml(title)}</title>
-<style>
-    body { font-family: 'Calibri', Arial, sans-serif; margin: 40px; line-height: 1.6; }
-    h1 { color: #2c3e50; border-bottom: 2px solid #4d9fff; padding-bottom: 10px; }
-    .meta { color: #7f8c8d; font-size: 12px; margin-bottom: 30px; }
-    .section { margin-bottom: 25px; }
-    .section-title { font-weight: bold; color: #4d9fff; text-transform: uppercase; margin-bottom: 10px; }
-    .content { background: #f9f9f9; padding: 15px; border-radius: 5px; white-space: pre-wrap; }
-    footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 11px; color: #95a5a6; text-align: center; }
-</style>
-</head>
-<body>
-    <h1>${escapeHtml(title)}</h1>
-    <div class="meta">Generated: ${escapeHtml(date)} | Radiology Assistant</div>`;
-    
-    if (type === 'report') {
-        content += `
-    <div class="section"><div class="section-title">✦ POLISHED IMPRESSION</div><div class="content">${escapeHtml(item.impression || '—')}</div></div>
-    <div class="section"><div class="section-title">◈ TOP 3 DIFFERENTIALS</div><div class="content">${escapeHtml(item.differentials || '—')}</div></div>
-    <div class="section"><div class="section-title">◎ FEEDBACK & RATIONALE</div><div class="content">${escapeHtml(item.feedback || '—')}</div></div>
-    <div class="section"><div class="section-title">📋 METADATA</div><div class="content">Subspecialty: ${escapeHtml(item.subspecialty || 'General')}<br>Modality: ${escapeHtml(item.modality || 'Any')}</div></div>`;
-    } else {
-        content += `
-    <div class="section"><div class="section-title">📄 INPUT</div><div class="content">${escapeHtml(item.input_text || '—')}</div></div>
-    <div class="section"><div class="section-title">✦ SUMMARY</div><div class="content">${escapeHtml(item.summary || '—')}</div></div>
-    <div class="section"><div class="section-title">◈ KEY FINDINGS</div><div class="content">${escapeHtml(item.findings || '—')}</div></div>
-    <div class="section"><div class="section-title">◎ CLINICAL IMPLICATIONS</div><div class="content">${escapeHtml(item.implications || '—')}</div></div>`;
-    }
-    
-    content += `<footer>Generated by Radiology Assistant — AI-Powered Radiology Training Workspace</footer></body></html>`;
-    
-    const blob = new Blob([content], { type: 'application/msword' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `${title.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.doc`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(a.href);
-    toast(`Exported "${title}" to Word ✓`, 'ok');
-}
-
-// Export all items to Word
-function exportAllToWord() {
-    const allItems = [...libData.reports, ...libData.papers];
-    if (allItems.length === 0) {
-        toast('No items to export', 'err');
-        return;
-    }
-    
-    let combinedContent = '';
-    allItems.forEach((item, index) => {
-        const type = item.impression !== undefined ? 'report' : 'paper';
-        const title = item.title || (type === 'report' ? 'Radiology Report' : 'Paper Digest');
-        const date = item.created_at ? new Date(item.created_at).toLocaleString() : new Date().toLocaleString();
-        
-        combinedContent += `
-            <div style="page-break-after: always;">
-                <h1>${index + 1}. ${escapeHtml(title)}</h1>
-                <div class="meta">Generated: ${escapeHtml(date)} | Radiology Assistant</div>
-                ${type === 'report' ? `
-                    <div class="section"><div class="section-title">✦ POLISHED IMPRESSION</div><div class="content">${escapeHtml(item.impression || '—')}</div></div>
-                    <div class="section"><div class="section-title">◈ TOP 3 DIFFERENTIALS</div><div class="content">${escapeHtml(item.differentials || '—')}</div></div>
-                    <div class="section"><div class="section-title">◎ FEEDBACK</div><div class="content">${escapeHtml(item.feedback || '—')}</div></div>
-                ` : `
-                    <div class="section"><div class="section-title">✦ SUMMARY</div><div class="content">${escapeHtml(item.summary || '—')}</div></div>
-                    <div class="section"><div class="section-title">◈ KEY FINDINGS</div><div class="content">${escapeHtml(item.findings || '—')}</div></div>
-                    <div class="section"><div class="section-title">◎ CLINICAL IMPLICATIONS</div><div class="content">${escapeHtml(item.implications || '—')}</div></div>
-                `}
-                <hr>
-            </div>`;
-    });
-    
-    const fullHtml = `<!DOCTYPE html>
-    <html><head><meta charset="UTF-8"><title>Radiology Assistant Export</title>
-    <style>
-        body { font-family: Calibri, Arial, sans-serif; margin: 40px; line-height: 1.6; }
-        h1 { color: #2c3e50; border-bottom: 2px solid #4d9fff; }
-        .meta { color: #7f8c8d; font-size: 12px; margin-bottom: 20px; }
-        .section { margin-bottom: 20px; }
-        .section-title { font-weight: bold; color: #4d9fff; text-transform: uppercase; margin-bottom: 8px; }
-        .content { background: #f9f9f9; padding: 12px; border-radius: 5px; white-space: pre-wrap; }
-        hr { margin: 30px 0; }
-    </style>
-    </head><body>
-    <h1>Radiology Assistant - Complete Export</h1>
-    <div class="meta">Exported: ${new Date().toLocaleString()} | Total Items: ${allItems.length}</div>
-    ${combinedContent}
-    </body></html>`;
-    
-    const blob = new Blob([fullHtml], { type: 'application/msword' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `radiology_coach_export_all_${new Date().toISOString().slice(0,10)}.doc`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    toast(`Exported all ${allItems.length} items to Word ✓`, 'ok');
-}
-
-// ========== NIGHT MODE FUNCTIONS ==========
 function setTheme(theme) {
-    const body = document.body;
-    const darkBtn = document.querySelector('.theme-toggle-btn:first-child');
-    const lightBtn = document.querySelector('.theme-toggle-btn:last-child');
-    
-    if (theme === 'dark') {
-        body.classList.remove('light-mode');
-        darkBtn.classList.add('active');
-        lightBtn.classList.remove('active');
-        localStorage.setItem('radiology_theme', 'dark');
-    } else {
-        body.classList.add('light-mode');
-        lightBtn.classList.add('active');
-        darkBtn.classList.remove('active');
-        localStorage.setItem('radiology_theme', 'light');
-    }
+    document.body.classList.toggle('light-mode', theme === 'light');
+    document.getElementById('btn-dark').classList.toggle('active', theme === 'dark');
+    document.getElementById('btn-light').classList.toggle('active', theme === 'light');
+    localStorage.setItem('radiology_theme', theme);
 }
 
-function loadTheme() {
-    const savedTheme = localStorage.getItem('radiology_theme');
-    if (savedTheme === 'light') {
-        setTheme('light');
-    } else {
-        setTheme('dark');
-    }
-}
+function loadTheme() { const saved = localStorage.getItem('radiology_theme'); setTheme(saved === 'light' ? 'light' : 'dark'); }
 
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function escapeHtml(str) { return esc(str); }
 </script>
 </body>
 </html>
