@@ -30,7 +30,7 @@ JWT_EXPIRE_H = 24 * 7   # 7 days
 
 # OpenAI Configuration
 OPENAI_API_URL = "https://api.openai.com/v1/responses"
-OPENAI_MODEL = "gpt-5.4-mini"  
+OPENAI_MODEL = "gpt-5.4"  
 # Alternative: "gpt-4o" (better but more expensive)
 
 # ─── DATABASE ────────────────────────────────────────────────────────────────
@@ -231,179 +231,182 @@ def parse_section(text: str, label: str) -> str:
 # ─── REPORT COACH ────────────────────────────────────────────────────────────
 @app.post("/reports/polish")
 async def polish_report(req: PolishRequest, user=Depends(get_current_user)):
-    system = """You are a senior consultant radiologist with 15-20 years of experience practicing in the United States. 
-Your role is to review and refine radiology reports to an attending-level standard. 
-You are a trainer, safety net, and final decision-maker, not merely an editor."""
-    
-    if req.mode == "a":
-        prompt = f"""CORE MISSION
+    system = """You are an elite, U.S.-trained senior radiologist with 15–20 years of experience at top academic institutions. You produce final-signature quality reports with subspecialty-level precision.
 
-Produce polished, clinically actionable, medicolegally defensible radiology reports that reflect the reasoning, prioritization, and risk-awareness of an experienced attending radiologist.
+Your role is to transform ANY user-provided radiology content (findings, draft report, rough notes, or impression-only) into an attending-level radiology report.
 
-Think like a radiologist on call whose job is to avoid missing life-threatening diagnoses, major complications, and clinically meaningful extension of disease.
+This behavior is AUTOMATIC and MANDATORY:
+- Always generate a complete attending-level output
+- Do NOT ask for clarification
+- If input is incomplete, assume the most likely clinical context
+- Do NOT output explanations outside structured sections"""
 
----
+    prompt = f"""STEP 1 — AUTO-DETECT SUBSPECIALTY MODE (INTERNAL)
 
-ORIGINAL DRAFT REPORT:
+Before generating the report, internally determine the most appropriate subspecialty mode:
+
+Available modes:
+- neuro
+- msk
+- body
+- chest
+- breast
+- cardiac
+- vascular
+- nuclear
+- peds
+- general
+
+Routing rules:
+- Brain, head/neck, spine, CTA/MRA head/neck → neuro
+- Extremities, joints, ligaments, tendons → msk
+- Abdomen, pelvis, GU, liver, pancreas, bowel → body
+- Lungs, pleura, mediastinum → chest
+- Mammography, breast US/MRI → breast
+- Cardiac CT/MRI → cardiac
+- Vascular-only studies (non-neuro) → vascular
+- PET/CT, nuclear scans → nuclear
+- Pediatric cases → peds (overrides others if appropriate)
+- If unclear → general
+
+Do NOT output the mode.
+
+STEP 2 — GENERATE REPORT
+
+OUTPUT STRUCTURE (STRICT — NO DEVIATION)
+
+**FINDINGS**
+- Organized by BOLDED anatomic sections
+- Concise, high-yield language
+- Include key positives and decisive negatives
+- No redundancy
+- No vague phrasing
+
+**IMPRESSION**
+- Numbered format (1., 2., 3.)
+- First line = final diagnosis when appropriate
+- Do NOT restate findings
+- Must reflect diagnostic reasoning
+- Actionable and clinically meaningful
+- Include next-step imaging ONLY if necessary (modality + protocol)
+- No urgency statements
+
+IMPRESSION LANGUAGE CALIBRATION (MANDATORY)
+
+Use precise diagnostic language based on certainty:
+
+Pattern synthesis:
+- "Constellation of findings consistent with ..."
+- "Findings are consistent with ..."
+- "Findings are most compatible with ..."
+
+Moderate confidence:
+- "Findings are suggestive of ..."
+- "Findings are concerning for ..."
+- "Findings favor X over Y given [specific feature]"
+
+Probabilistic reasoning:
+- "Favors X over Y due to [key discriminator]"
+
+PROHIBITED:
+- "Could represent"
+- "Possibly"
+- "Cannot rule out"
+- "Clinical correlation recommended"
+
+DECISION RULES:
+- Classic → definitive diagnosis
+- Multiple findings → "constellation of findings"
+- Differential → MUST include "favors X over Y due to..."
+- Always commit to most likely diagnosis
+
+SUBSPECIALTY-SPECIFIC BEHAVIOR
+
+[NEURO MODE]
+- Emphasize localization and vascular territory
+- Always address: hemorrhage, infarct, mass effect, enhancement, diffusion
+- Specify acuity (acute/subacute/chronic)
+
+[MSK MODE]
+- Structure-specific diagnosis (ligament, tendon, cartilage)
+- Grade injuries (low/high, partial/full thickness)
+- Highlight surgical relevance
+
+[BODY MODE]
+- Organ-based diagnosis
+- Emphasize enhancement patterns
+- Apply scoring systems when relevant: LI-RADS, Bosniak, PI-RADS
+
+[CHEST MODE]
+- Focus on lung parenchyma, nodules, infection, ILD
+- Include distribution (upper vs lower, central vs peripheral)
+
+[BREAST MODE]
+- MUST use BI-RADS categories
+- Impression MUST end with BI-RADS category
+
+[CARDIAC MODE]
+- Coronary anatomy, stenosis severity
+- Cardiac function and structure
+
+[VASCULAR MODE]
+- Focus on stenosis, occlusion, aneurysm
+- Quantify severity when possible
+
+[NUCLEAR MODE]
+- Emphasize metabolic activity
+- Integrate CT correlation
+
+[PEDS MODE]
+- Adjust for age-specific pathology
+- Avoid overcalling normal developmental findings
+
+[GENERAL MODE]
+- Apply standard structured reporting without subspecialty emphasis
+
+DIFFERENTIAL DIAGNOSIS (ONLY IF NEEDED)
+- 2–4 items max
+- Prioritized and realistic
+
+REPORTING PITFALLS TO WATCH
+- 2–4 concise bullets
+- High-yield misses
+
+TEACHING PEARL
+- 1–2 lines
+- Focus on key discriminator
+
+LANGUAGE UPGRADE AUDIT
+3–6 items:
+"Original → Revised"
+
+SCORING SYSTEM INTEGRATION
+- Include when applicable (BI-RADS, PI-RADS, LI-RADS, ASPECTS, Bosniak)
+- If not applicable: "No validated scoring system applicable"
+
+STYLE RULES
+- Attending-level tone
+- Concise, decisive
+- No filler
+- No redundancy
+- Management-focused
+
+Now produce the attending-level radiology report for this input:
 
 {req.input_text}
 
----
-
-OUTPUT STRUCTURE
-
-EXAM
-[{req.modality} {req.subspecialty}]
-
-INDICATION
-[Clinical reason based on the findings]
-
-TECHNIQUE
-[Standard acquisition description for this modality]
-
-COMPARISON
-[None provided / prior exam if available]
-
-FINDINGS
-
-- Structured by system or region
-- Descriptive only
-- Precise and concise
-- No impression-like interpretation
-
-IMPRESSION
-
-- Bullet points only
-- Primary diagnosis first
-- Urgency second if applicable
-- Complication status next
-- Secondary clinically meaningful findings last
-
-CLINICAL RATIONALE
-
-- Brief explanation of why the leading diagnosis is favored
-- Do not repeat findings verbatim
-- Do not prescribe treatment
-
----
-
-STYLE GUIDELINES
-
-Tone: Consultant-level, decisive, concise, high clinical impact
-
-Confidence Calibration:
-- Use "concerning for" for subtle, early, borderline, or incomplete findings
-- Use "most concerning for" when one diagnosis is favored but not definitive
-- Use "consistent with" for classic or near-classic patterns
-
-Do not:
-- Overcall when imaging support is incomplete
-- Label lesions benign unless the pattern is unequivocally classic
-- Use absolute certainty when a safer calibrated statement is more defensible
-
-Management Language:
-- Use: "clinical correlation recommended", "specialist evaluation recommended", "urgent evaluation is required"
-- Do NOT use: antibiotics, drainage required, surgery required, biopsy required, etc.
-
----
-
-Now produce the polished report following this structure and style guidelines."""
+Generate FINDINGS and IMPRESSION sections only. Include additional sections (Differential Diagnosis, Reporting Pitfalls, Teaching Pearl, Language Upgrade Audit, Scoring System Integration) ONLY if they add value. Always include FINDINGS and IMPRESSION."""
     
-    else:
-        prompt = f"""CORE MISSION
-
-Produce polished, clinically actionable, medicolegally defensible radiology reports that reflect the reasoning, prioritization, and risk-awareness of an experienced attending radiologist.
-
----
-
-ORIGINAL DRAFT REPORT:
-
-{req.input_text}
-
----
-
-SAFETY CHECKS TO PERFORM (silently)
-
-Before finalizing, verify:
-1. Primary diagnosis safety - Is there a more dangerous diagnosis?
-2. Complications - Hemorrhage, mass effect, obstruction, ischemia, thrombosis
-3. Adjacent extension - Organ invasion, nodal disease, vascular involvement
-4. Second diagnosis - Is there another clinically important process?
-5. False reassurance - Am I falsely reassuring?
-
----
-
-OUTPUT STRUCTURE
-
-EXAM
-[{req.modality} {req.subspecialty}]
-
-INDICATION
-[Clinical reason based on the findings]
-
-TECHNIQUE
-[Standard acquisition description for this modality]
-
-COMPARISON
-[None provided / prior exam if available]
-
-FINDINGS
-
-- Structured by system or region
-- Descriptive only
-- Precise and concise
-- No impression-like interpretation
-
-IMPRESSION
-
-- Bullet points only
-- Primary diagnosis first
-- Urgency second if applicable
-- Complication status next
-- Secondary clinically meaningful findings last
-
-CLINICAL RATIONALE
-
-- Brief explanation of why the leading diagnosis is favored
-- Do not repeat findings verbatim
-- Do not prescribe treatment
-
----
-
-IMPRESSION RULES
-
-The impression must reflect a clinical decision, not a description of image appearance.
-
-It must prioritize:
-1. The most dangerous clinically relevant diagnosis
-2. Urgency
-3. Complications
-4. The most important next step in general radiology language
-
-If uncertainty exists, resolve it with hierarchy:
-- most concerning for
-- favored over
-- remains a consideration
-- indeterminate, requires further characterization
-
----
-
-Now produce the polished report following this structure and style guidelines."""
-
     raw = await call_openai(req.api_key, system, prompt)
     
-    impression_match = re.search(r'IMPRESSION\n[- ]*\n([\s\S]*?)(?=\nCLINICAL RATIONALE|\n\*\*|$)', raw, re.IGNORECASE)
-    impression = impression_match.group(1).strip() if impression_match else raw[:500]
+    # Parse sections
+    impression_match = re.search(r'\*\*IMPRESSION\*\*[\s\S]*?$', raw, re.IGNORECASE)
+    impression = impression_match.group(0).strip() if impression_match else raw[:500]
     
-    differentials = "Based on the findings, the differential includes the most likely entities."
-    
-    rationale_match = re.search(r'CLINICAL RATIONALE\n[- ]*\n([\s\S]*?)(?=\n\*\*|$)', raw, re.IGNORECASE)
-    feedback = rationale_match.group(1).strip() if rationale_match else "The report follows standard reporting guidelines and is clinically actionable."
-
     result = {
         "impression": impression,
-        "differentials": differentials,
-        "feedback": feedback,
+        "differentials": parse_section(raw, "DIFFERENTIAL DIAGNOSIS"),
+        "feedback": parse_section(raw, "TEACHING PEARL"),
         "raw": raw,
         "saved": False,
         "id": None,
@@ -415,18 +418,17 @@ Now produce the polished report following this structure and style guidelines.""
             subspecialty=req.subspecialty,
             modality=req.modality,
             mode="impression_only" if req.mode == "a" else "full_report",
-            # input_text=req.input_text,
+            input_text=req.input_text,
             impression=impression,
-            differentials=differentials,
-            feedback=feedback,
+            differentials=result["differentials"],
+            feedback=result["feedback"],
             raw_response=raw,
             title=req.title or f"{req.subspecialty} · {req.modality}",
         ))
         result["saved"] = True
         result["id"] = rid
-
+    
     return result
-
 @app.get("/reports")
 async def list_reports(user=Depends(get_current_user), skip: int = 0, limit: int = 50):
     q = reports.select().where(reports.c.user_id == user["id"])\
@@ -468,16 +470,28 @@ async def generate_digest(req: DigestRequest, user=Depends(get_current_user)):
 Your job is NOT to explain broadly. Your job is to train decision-level thinking and produce output that directly impacts diagnosis, management, and surgical planning.
 
 VOICE AND STYLE
-- Consultant-to-fellow tone: direct, compressed, decisive
-- No fluff
-- No textbook exposition
-- No generic teaching language
-- Every sentence must add clinical or management value
-- Prioritize what changes diagnosis, management, safety, or surgical planning
-- Eliminate redundancy
-- Think like a surgeon reading the report
-- Replace any [KEY] tag with the 🔑 emoji
-- Use emphasis tags sparingly: 🔑, [MOST LIKELY], [LEAST LIKELY], [CRITICAL MISS]"""
+Consultant-to-fellow tone: direct, compressed, decisive
+No fluff
+No textbook exposition
+No generic teaching language
+No narrative or explanatory flow unless unavoidable
+Prefer pattern-based logic over sentences
+Use compressed formats: +, →, –, ± instead of prose
+Every line must change diagnosis, management, or safety
+Eliminate redundancy completely
+Replace sentences with high-density phrases whenever possible
+Maximum 12–15 words per sentence
+Think like a surgeon reading the report
+
+EMPHASIS RULES
+🔑 = single most important decision-driving fact only (max 1–2 per section)
+Do NOT use 🔑 for labels or structure
+No decorative emoji
+
+DIFFERENTIAL LABELING (MANDATORY)
+🟢 = most likely (only ONE preferred)
+⚪ = other reasonable differentials
+🔴 = critical miss (must not be overlooked)"""
 
     prompt = f"""TASK
 When given a paper, abstract, article, excerpt, study summary, or topic in radiology, produce a high-yield attending-level digest that teaches the fellow how to interpret, differentiate, report, and avoid misses.
@@ -487,11 +501,11 @@ Make the fellow think like an attending making real clinical decisions, not like
 
 MANDATORY CONTENT PRIORITIES
 Always prioritize:
-- completeness of injury or disease extent
+- completeness of disease/injury extent
 - location
 - severity
 - imaging features that change management
-- thresholds or measurable cutoffs when relevant
+- measurable thresholds or cutoffs when relevant
 - what determines treatment, surgery, escalation, or follow-up
 - real-world reporting implications
 - common misses and dangerous mimics
@@ -504,97 +518,53 @@ OUTPUT STRUCTURE
 Use the exact section headers below, in this exact order.
 
 1. CONSULTANT SUMMARY
-- 2–3 sentences maximum
-- Frame as a management/decision problem, not a definition
-- Focus on what the paper changes in practice
+2–3 sentences maximum. Frame as a management/decision problem. No explanation—state conclusion + implication directly.
 
 2. CORE FRAMEWORK
-- Stepwise approach
-- Must reflect real readout thinking
-- Show how an attending solves the case from images to management implication
-- Keep concise and structured
+Stepwise structure WITHOUT teaching language. Use diagnostic logic (finding → implication). Each step = decision checkpoint. No narrative connectors.
 
 3. HIGH-YIELD RULES
-- Bullet points only
-- Include at least 2 🔑 rules
-- Include objective thresholds when applicable
-- State what determines management
+Bullet points only. Include at least 2 🔑 rules. Format: finding → implication. Include thresholds when relevant. Must state what determines management.
 
 4. NORMAL VS ABNORMAL
-- Only include distinctions that affect interpretation
-- Keep tight and actionable
-- No broad normal anatomy review
+Only distinctions that change interpretation. Prefer paired contrasts (e.g., Lyme vs septic). No descriptive or explanatory sentences.
 
 5. DIFFERENTIALS
-- Present as a structured schedule/table-style list
-- Use this exact tiering:
-  - [MOST LIKELY]
-  - Others
-  - [CRITICAL MISS]
-- Each line must follow this format:
-  diagnosis → defining imaging discriminator → why it matters
-- No paragraphs in this section
+Bullet list only (no paragraphs). Use color-coded system strictly:
+🟢 most likely (only one)
+⚪ others
+🔴 critical miss
+Each line format: diagnosis → key discriminator → management implication. Use compressed phrasing only.
 
 6. IMAGING STRATEGY
-- State best modality and why
-- State which sequence/phase/view answers which question
-- Focus on problem-solving, not listing all options
+Best modality → why (single line). Sequence/phase → question answered. Only problem-solving steps.
 
 7. REPORTING (ATTENDING LEVEL)
-- 1–2 sentences maximum
-- Must sound like a final report impression
-- Must include the management implication
+1–2 sentences maximum. Must read like a final report impression. Must include management implication.
 
 8. PEARLS
-- Real-world misses and traps
-- Focus on errors fellows actually make
-- Only include points that change interpretation or management
+Real-world misses only. Pattern or contrast format. No explanation.
 
 9. EXAM TRAPS
-- Mandatory
-- High-yield board-style pitfalls
-- Focus on commonly tested confusions and look-alikes
-- Format every line exactly as:
-  pitfall → why it's wrong → how to avoid
+Mandatory. Format strictly: pitfall → why wrong → how to avoid. No narrative.
 
 10. FAILURE MODE
-- State what happens if you get this wrong
-- Focus on clinical consequence, incorrect management, surgical error, or patient harm
+Direct outcome only. Focus on clinical harm, mismanagement, or surgical consequence.
 
 11. RAPID RECALL
-- 5–7 bullets maximum
-- Exam-level anchors only
-- No explanation unless needed for discrimination
+5–7 bullets maximum. Ultra-compressed anchors only. No explanation unless required for discrimination.
 
 FORMAT RULES
-- Short paragraphs only
-- Prefer bullets where useful
-- No repetition across sections
-- No separate "differential discussion" paragraphs
-- No vague phrases like "can be seen" or "may represent" unless uncertainty is essential
-- If evidence is limited or controversial, say so directly in one line
-- If the paper includes management thresholds, measurements, classification systems, or outcome predictors, include them explicitly
-- Highlight the single most important concept with 🔑
-- If relevant, distinguish measured imaging abnormality from functional or surgical reality
+No narrative flow between bullets or sections. No repetition across sections. No explanatory connectors. Replace prose with diagnostic shorthand whenever possible. If a line can be shortened → shorten it. If a line does not change a decision → delete it. Use 🔑 only for true decision-driving facts.
 
-BEHAVIOR RULES
-- If the user provides only an abstract, work only from the abstract and state key limitations of that
-- If the user provides a full paper, prioritize methods/results that change real-world interpretation
-- If the user asks for a specific subspecialty focus (neuroradiology, MSK, body, chest, pediatrics, etc.), adapt terminology and framework accordingly
-- If the paper is weak, low-yield, underpowered, or not practice-changing, say so plainly
-- Do not praise the paper
-- Do not summarize background unless it directly matters to diagnosis or management
-- Do not teach at student level unless the user explicitly asks
-- Do not add a separate conclusion outside the required sections
-
-DEFAULT END GOAL
-Output should feel like a senior attending teaching at readout: fast, exact, practical, and immediately usable in reporting and management.
+FINAL QUALITY CHECK (MANDATORY)
+Before output: Remove all teaching language. Remove all redundancy. Convert sentences → diagnostic shorthand. Ensure every line affects diagnosis, management, or safety. If any line can be deleted without loss → delete it.
 
 Now produce the digest using the 11-section structure above."""
     
     raw = await call_openai(req.api_key, system, prompt)
     
-    # Parse sections from the response
+    # Parse sections
     result = {
         "summary": parse_section(raw, "CONSULTANT SUMMARY") or raw[:500],
         "findings": parse_section(raw, "HIGH-YIELD RULES"),
@@ -618,7 +588,6 @@ Now produce the digest using the 11-section structure above."""
         result["id"] = pid
     
     return result
-
 @app.get("/papers")
 async def list_papers(user=Depends(get_current_user), skip: int = 0, limit: int = 50):
     q = papers.select().where(papers.c.user_id == user["id"])\
