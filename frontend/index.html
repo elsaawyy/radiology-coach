@@ -789,10 +789,15 @@ async function generateDigest() {
             save: document.getElementById('d-save').checked,
         });
         
-        // Display full data.raw (11-section digest) with proper formatting
+        // Display full data.raw (11-section digest)
         const summaryDiv = document.getElementById('d-res-sum');
         if (summaryDiv) {
             summaryDiv.innerHTML = `<div style="white-space: pre-wrap; font-family: var(--mono); font-size: 12px; line-height: 1.6; background: var(--surface2); padding: 15px; border-radius: 8px;">${escapeHtml(data.raw || '—')}</div>`;
+        }
+        
+        // IMPORTANT: Store raw in recentDigest for library
+        if (data.raw) {
+            data.fullDigest = data.raw;
         }
         
         document.getElementById('d-result').classList.add('show');
