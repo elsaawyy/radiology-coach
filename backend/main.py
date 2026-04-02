@@ -229,9 +229,12 @@ async def call_openai(
     except Exception:
         return str(data) 
     
-def parse_section(text: str, label: str) -> str:
-    m = re.search(rf"{label}[:\s]*([\s\S]*?)(?=\n[A-Z#]|$)", text, re.IGNORECASE)
-    return m.group(1).strip() if m else ""
+def parse_section(text: str, labels: list) -> str:
+    for label in labels:
+        m = re.search(rf"{label}[:\s]*([\s\S]*?)(?=\n[A-Z#]|\Z)", text, re.IGNORECASE)
+        if m:
+            return m.group(1).strip()
+    return ""
 
 # ─── REPORT COACH ────────────────────────────────────────────────────────────
 @app.post("/reports/polish")
@@ -395,23 +398,54 @@ STYLE RULES
 - No filler
 - No redundancy
 - Management-focused
+--------------------------------------------------
+MANDATORY OUTPUT RULES (HARD CONSTRAINTS)
+--------------------------------------------------
+
+- You MUST output ALL sections
+- Do NOT skip any section
+- Do NOT summarize
+- Do NOT shorten output
+
+MINIMUM LENGTH REQUIREMENTS:
+- FINDINGS: at least 5 bullet points
+- IMPRESSION: at least 3 items
+- DIFFERENTIAL DIAGNOSIS: at least 3 items
+- TEACHING PEARL: at least 2 lines
+
+If any section is missing → the answer is INVALID.
 
 Now produce the attending-level radiology report for this input:
 
 {req.input_text}
 
-Generate FINDINGS and IMPRESSION sections only. Include additional sections (Differential Diagnosis, Reporting Pitfalls, Teaching Pearl, Language Upgrade Audit, Scoring System Integration) ONLY if they add value. Always include FINDINGS and IMPRESSION."""
+MANDATORY OUTPUT STRUCTURE (FINAL):
+
+You MUST output ALL sections below:
+
+**FINDINGS**
+**IMPRESSION**
+**DIFFERENTIAL DIAGNOSIS**
+**TEACHING PEARL**
+
+Do NOT skip any section under any condition."""
     
     raw = await call_openai(req.api_key, system, prompt)
     
     # Parse sections
-    impression_match = re.search(r'\*\*IMPRESSION\*\*[\s\S]*?$', raw, re.IGNORECASE)
-    impression = impression_match.group(0).strip() if impression_match else raw[:500]
+    impression = parse_section(raw, ["IMPRESSION"])
     
     result = {
         "impression": impression,
-        "differentials": parse_section(raw, "DIFFERENTIAL DIAGNOSIS"),
-        "feedback": parse_section(raw, "TEACHING PEARL"),
+        "differentials": parse_section(raw, [
+            "DIFFERENTIAL DIAGNOSIS",
+            "DIFFERENTIALS",
+        "TOP DIFFERENTIALS"
+    ]),
+    "feedback": parse_section(raw, [
+        "TEACHING PEARL",
+        "PEARL"
+    ]),
         "raw": raw,
         "saved": False,
         "id": None,
@@ -568,12 +602,15 @@ Before output: Remove all teaching language. Remove all redundancy. Convert sent
 Now produce the digest using the 11-section structure above."""
     
     raw = await call_openai(req.api_key, system, prompt)
+    print("\n=== RAW RESPONSE ===\n")
+    print(raw)
+    print("\n====================\n")
     
     # Parse sections
     result = {
-        "summary": parse_section(raw, "CONSULTANT SUMMARY") or raw[:500],
-        "findings": parse_section(raw, "HIGH-YIELD RULES"),
-        "implications": parse_section(raw, "FAILURE MODE"),
+        "summary": parse_section(raw, ["CONSULTANT SUMMARY"]) or raw[:500],
+        "findings": parse_section(raw, ["HIGH-YIELD RULES"]),
+        "implications": parse_section(raw, ["FAILURE MODE"]),
         "raw": raw,
         "saved": False,
         "id": None,
