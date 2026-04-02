@@ -569,7 +569,7 @@ window.addEventListener('DOMContentLoaded', () => {
     ['r-name', 'r-email', 'r-pass'].forEach(id => document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') doRegister(); }));
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────��─────────
 // API HELPER
 async function api(method, path, body = null, auth = true) {
     const headers = { 'Content-Type': 'application/json' };
@@ -783,9 +783,13 @@ async function generateDigest() {
         const data = await api('POST', '/papers/digest', {
             input_mode: digestMode, input_text: input, api_key: key, save: document.getElementById('d-save').checked,
         });
-        document.getElementById('d-res-sum').textContent = data.summary || '—';
-        document.getElementById('d-res-find').textContent = data.findings || '—';
-        document.getElementById('d-res-impl').textContent = data.implications || '—';
+        // Display full data.raw (11-section digest) with proper white-space formatting
+        document.getElementById('d-res-sum').innerHTML = `<div style="white-space: pre-wrap; font-family: var(--mono); line-height: 1.6;">${escapeHtml(data.raw || '—')}</div>`;
+        // Hide the other sections since we're showing the complete digest
+        document.querySelector('#d-result .divider:nth-of-type(1)').style.display = 'none';
+        document.querySelectorAll('#d-result .result-section')[1].style.display = 'none';
+        document.querySelectorAll('#d-result .divider')[1].style.display = 'none';
+        document.querySelectorAll('#d-result .result-section')[2].style.display = 'none';
         document.getElementById('d-result').classList.add('show');
         recentDigest = data;
         const saveBtn = document.getElementById('d-save-btn');
@@ -862,11 +866,18 @@ function openLibItem(id, type) {
             <div class="modal-section"><div class="modal-lbl">Feedback</div><div class="modal-val">${esc(item.feedback || '')}</div></div>
             <div class="modal-section"><button class="btn-primary" style="width:100%;margin-top:10px" onclick='exportToWord(${safeItem},"report")'>📄 Export to Word</button></div>`;
     } else {
-        body = `${ts ? `<div class="modal-section"><div class="modal-lbl">Date</div><p style="font-size:12px;color:var(--text3);font-family:var(--mono)">${ts}</p></div>` : ''}
-            <div class="modal-section"><div class="modal-lbl">Summary</div><div class="modal-val">${esc(item.summary || '')}</div></div>
-            <div class="modal-section"><div class="modal-lbl">Key Findings</div><div class="modal-val">${esc(item.findings || '')}</div></div>
-            <div class="modal-section"><div class="modal-lbl">Clinical Implications</div><div class="modal-val">${esc(item.implications || '')}</div></div>
-            <div class="modal-section"><button class="btn-primary" style="width:100%;margin-top:10px" onclick='exportToWord(${safeItem},"paper")'>📄 Export to Word</button></div>`;
+        // Show full digest if available, otherwise show parsed sections
+        if (item.raw) {
+            body = `${ts ? `<div class="modal-section"><div class="modal-lbl">Date</div><p style="font-size:12px;color:var(--text3);font-family:var(--mono)">${ts}</p></div>` : ''}
+                <div class="modal-section"><div class="modal-lbl">Full 11-Section Digest</div><div class="modal-val" style="white-space:pre-wrap;font-family:var(--mono);font-size:11px;line-height:1.6">${esc(item.raw)}</div></div>
+                <div class="modal-section"><button class="btn-primary" style="width:100%;margin-top:10px" onclick='exportToWord(${safeItem},"paper")'>📄 Export to Word</button></div>`;
+        } else {
+            body = `${ts ? `<div class="modal-section"><div class="modal-lbl">Date</div><p style="font-size:12px;color:var(--text3);font-family:var(--mono)">${ts}</p></div>` : ''}
+                <div class="modal-section"><div class="modal-lbl">Summary</div><div class="modal-val">${esc(item.summary || '')}</div></div>
+                <div class="modal-section"><div class="modal-lbl">Key Findings</div><div class="modal-val">${esc(item.findings || '')}</div></div>
+                <div class="modal-section"><div class="modal-lbl">Clinical Implications</div><div class="modal-val">${esc(item.implications || '')}</div></div>
+                <div class="modal-section"><button class="btn-primary" style="width:100%;margin-top:10px" onclick='exportToWord(${safeItem},"paper")'>📄 Export to Word</button></div>`;
+        }
     }
     document.getElementById('modal-body').innerHTML = body;
     document.getElementById('modal-ov').classList.add('show');
@@ -882,7 +893,7 @@ async function deleteItem(id, type) {
     } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ──────────────────────────��──────────────────────────────────────────────────
 // EXPORT — HTML to Word (Works without external libraries)
 function exportToWord(item, type) {
     const title = item.title || (type === 'report' ? 'Radiology Report' : 'Paper Digest');
@@ -912,13 +923,20 @@ h1 { color: #2c3e50; border-bottom: 3px solid #4d9fff; text-align: center; }
     <div class="section-title">📋 Metadata</div>
     <div class="content">Subspecialty: ${escapeHtml(item.subspecialty || 'General')}<br>Modality: ${escapeHtml(item.modality || 'Any')}</div>`;
     } else {
-        content += `
+        // Use full data.raw for paper digests if available, otherwise fallback to parsed sections
+        if (item.raw) {
+            content += `
+    <div class="section-title">✦ Full 11-Section Digest</div>
+    <div class="content">${escapeHtml(item.raw)}</div>`;
+        } else {
+            content += `
     <div class="section-title">✦ Summary</div>
     <div class="content">${escapeHtml(item.summary || '—')}</div>
     <div class="section-title">◈ Key Findings</div>
     <div class="content">${escapeHtml((item.findings || '—').replace(/\n/g, '<br>'))}</div>
     <div class="section-title">◎ Clinical Implications</div>
     <div class="content">${escapeHtml(item.implications || '—')}</div>`;
+        }
     }
     content += `<div class="footer">Generated by Radiology Assistant — AI-Powered Radiology Training Workspace</div></body></html>`;
     const blob = new Blob([content], { type: 'application/msword' });
@@ -953,9 +971,14 @@ function exportAllToWord() {
             <div class="section-title">◈ Top 3 Differentials</div><div class="content">${escapeHtml((item.differentials || '—').replace(/\n/g, '<br>'))}</div>
             <div class="section-title">◎ Feedback</div><div class="content">${escapeHtml(item.feedback || '—')}</div>`;
         } else {
-            combinedContent += `<div class="section-title">✦ Summary</div><div class="content">${escapeHtml(item.summary || '—')}</div>
-            <div class="section-title">◈ Key Findings</div><div class="content">${escapeHtml((item.findings || '—').replace(/\n/g, '<br>'))}</div>
-            <div class="section-title">◎ Clinical Implications</div><div class="content">${escapeHtml(item.implications || '—')}</div>`;
+            // Use full data.raw for paper digests if available
+            if (item.raw) {
+                combinedContent += `<div class="section-title">✦ Full 11-Section Digest</div><div class="content">${escapeHtml(item.raw)}</div>`;
+            } else {
+                combinedContent += `<div class="section-title">✦ Summary</div><div class="content">${escapeHtml(item.summary || '—')}</div>
+                <div class="section-title">◈ Key Findings</div><div class="content">${escapeHtml((item.findings || '—').replace(/\n/g, '<br>'))}</div>
+                <div class="section-title">◎ Clinical Implications</div><div class="content">${escapeHtml(item.implications || '—')}</div>`;
+            }
         }
         combinedContent += `<hr></div>`;
     });
@@ -973,7 +996,7 @@ function exportAllToWord() {
 function copyResult(type) {
     let text = '';
     if (type === 'report' && recentReport) text = `POLISHED IMPRESSION:\n${recentReport.impression}\n\nTOP 3 DIFFERENTIALS:\n${recentReport.differentials}\n\nFEEDBACK:\n${recentReport.feedback}`;
-    else if (type === 'digest' && recentDigest) text = `SUMMARY:\n${recentDigest.summary}\n\nKEY FINDINGS:\n${recentDigest.findings}\n\nCLINICAL IMPLICATIONS:\n${recentDigest.implications}`;
+    else if (type === 'digest' && recentDigest) text = recentDigest.raw || `SUMMARY:\n${recentDigest.summary}\n\nKEY FINDINGS:\n${recentDigest.findings}\n\nCLINICAL IMPLICATIONS:\n${recentDigest.implications}`;
     if (text) navigator.clipboard.writeText(text).then(() => toast('Copied ✓', 'ok'));
 }
 
