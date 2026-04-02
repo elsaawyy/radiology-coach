@@ -6,7 +6,7 @@
 <title>Radiology Coach</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-/* Your existing CSS styles - keep all of them */
+/* ========== CSS VARIABLES ========== */
 :root {
   --bg:       #07090f;
   --surface:  #0e1117;
@@ -544,6 +544,10 @@ textarea::placeholder { color:var(--text3); }
 <div class="toast" id="toast"></div>
 
 <script>
+// ============================================================
+// RADIOLOGY COACH - PRODUCTION FRONTEND
+// ============================================================
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CONFIG
 const API_BASE = 'https://radiology-coach-production.up.railway.app';
@@ -569,7 +573,7 @@ window.addEventListener('DOMContentLoaded', () => {
     ['r-name', 'r-email', 'r-pass'].forEach(id => document.getElementById(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') doRegister(); }));
 });
 
-// ───────────────────────────────────────────────────────────────────��─────────
+// ─────────────────────────────────────────────────────────────────────────────
 // API HELPER
 async function api(method, path, body = null, auth = true) {
     const headers = { 'Content-Type': 'application/json' };
@@ -789,15 +793,10 @@ async function generateDigest() {
             save: document.getElementById('d-save').checked,
         });
         
-        // Display full data.raw (11-section digest)
+        // Display full data.raw (11-section digest) with proper formatting
         const summaryDiv = document.getElementById('d-res-sum');
         if (summaryDiv) {
             summaryDiv.innerHTML = `<div style="white-space: pre-wrap; font-family: var(--mono); font-size: 12px; line-height: 1.6; background: var(--surface2); padding: 15px; border-radius: 8px;">${escapeHtml(data.raw || '—')}</div>`;
-        }
-        
-        // IMPORTANT: Store raw in recentDigest for library
-        if (data.raw) {
-            data.fullDigest = data.raw;
         }
         
         document.getElementById('d-result').classList.add('show');
@@ -821,14 +820,17 @@ async function generateDigest() {
         document.getElementById('d-loading').classList.remove('show'); 
     }
 }
+
 async function saveCurrentDigest() {
     if (!recentDigest || recentDigest.saved) return;
     const key = getApiKey();
     if (!key) { toast('Set your API key.', 'err'); return; }
     try {
         const data = await api('POST', '/papers/digest', {
-            input_mode: digestMode, input_text: document.getElementById('d-input').value.trim(),
-            api_key: key, save: true,
+            input_mode: digestMode, 
+            input_text: document.getElementById('d-input').value.trim(),
+            api_key: key, 
+            save: true,
         });
         recentDigest = data;
         document.getElementById('d-save-btn').textContent = '✓ Saved';
@@ -845,8 +847,10 @@ function clearDigest() { document.getElementById('d-input').value = ''; document
 async function loadLibrary() {
     try {
         const [reports, papers] = await Promise.all([api('GET', '/reports'), api('GET', '/papers')]);
-        libData.reports = reports; libData.papers = papers;
-        updateLibCount(); renderLib();
+        libData.reports = reports; 
+        libData.papers = papers;
+        updateLibCount(); 
+        renderLib();
     } catch (e) { toast('Error loading library: ' + e.message, 'err'); }
 }
 
@@ -857,18 +861,33 @@ function updateLibCount() {
     document.getElementById('cnt-p').textContent = libData.papers.length;
 }
 
-function setLibTab(t) { libTab = t; document.getElementById('lt-reports').classList.toggle('active', t === 'reports'); document.getElementById('lt-papers').classList.toggle('active', t === 'papers'); renderLib(); }
+function setLibTab(t) { 
+    libTab = t; 
+    document.getElementById('lt-reports').classList.toggle('active', t === 'reports'); 
+    document.getElementById('lt-papers').classList.toggle('active', t === 'papers'); 
+    renderLib(); 
+}
 
 function renderLib() {
     const q = (document.getElementById('lib-search')?.value || '').toLowerCase();
     const items = (libTab === 'reports' ? libData.reports : libData.papers).filter(i => !q || JSON.stringify(i).toLowerCase().includes(q));
     const el = document.getElementById('lib-content');
-    if (!items.length) { el.innerHTML = `<div class="lib-empty"><div class="lib-empty-icon">${libTab === 'reports' ? '📋' : '📚'}</div><div class="lib-empty-text">No saved ${libTab} yet.</div></div>`; return; }
+    if (!items.length) { 
+        el.innerHTML = `<div class="lib-empty"><div class="lib-empty-icon">${libTab === 'reports' ? '📋' : '📚'}</div><div class="lib-empty-text">No saved ${libTab} yet.</div></div>`; 
+        return; 
+    }
     el.innerHTML = '<div class="lib-grid">' + items.map(item => {
         const ts = item.created_at ? new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
         let title, meta, preview;
-        if (libTab === 'reports') { title = item.title || `${item.subspecialty}·${item.modality}`; meta = `${item.mode === 'impression_only' ? 'Mode A' : 'Mode B'} · ${ts}`; preview = item.impression || item.input_text || ''; }
-        else { title = item.title || 'Paper Digest'; meta = ts; preview = item.summary || ''; }
+        if (libTab === 'reports') { 
+            title = item.title || `${item.subspecialty}·${item.modality}`; 
+            meta = `${item.mode === 'impression_only' ? 'Mode A' : 'Mode B'} · ${ts}`; 
+            preview = item.impression || item.input_text || ''; 
+        } else { 
+            title = item.title || 'Paper Digest'; 
+            meta = ts; 
+            preview = item.summary || ''; 
+        }
         return `<div class="lib-card" onclick="openLibItem(${item.id},'${libTab}')"><div class="lib-card-top"><div><div class="lib-card-title">${esc(title)}</div><div class="lib-card-meta">${esc(meta)}</div></div><div class="lib-card-btns" onclick="event.stopPropagation()"><button class="btn-sm del" onclick="deleteItem(${item.id},'${libTab}')">Delete</button></div></div><div class="lib-card-preview">${esc(preview)}</div></div>`;
     }).join('') + '</div>';
 }
@@ -889,21 +908,16 @@ function openLibItem(id, type) {
             <div class="modal-section"><button class="btn-primary" style="width:100%;margin-top:10px" onclick='exportToWord(${safeItem},"report")'>📄 Export to Word</button></div>`;
     } else {
         // For papers - show full raw response if available
-        if (item.raw) {
-            body = `${ts ? `<div class="modal-section"><div class="modal-lbl">Date</div><p style="font-size:12px;color:var(--text3);font-family:var(--mono)">${ts}</p></div>` : ''}
-                <div class="modal-section"><div class="modal-lbl">Full 11-Section Digest</div><div class="modal-val" style="white-space:pre-wrap;font-family:var(--mono);font-size:12px;line-height:1.6">${esc(item.raw)}</div></div>
-                <div class="modal-section"><button class="btn-primary" style="width:100%;margin-top:10px" onclick='exportToWord(${safeItem},"paper")'>📄 Export to Word</button></div>`;
-        } else {
-            body = `${ts ? `<div class="modal-section"><div class="modal-lbl">Date</div><p style="font-size:12px;color:var(--text3);font-family:var(--mono)">${ts}</p></div>` : ''}
-                <div class="modal-section"><div class="modal-lbl">Summary</div><div class="modal-val">${esc(item.summary || '')}</div></div>
-                <div class="modal-section"><div class="modal-lbl">Key Findings</div><div class="modal-val">${esc(item.findings || '')}</div></div>
-                <div class="modal-section"><div class="modal-lbl">Clinical Implications</div><div class="modal-val">${esc(item.implications || '')}</div></div>
-                <div class="modal-section"><button class="btn-primary" style="width:100%;margin-top:10px" onclick='exportToWord(${safeItem},"paper")'>📄 Export to Word</button></div>`;
-        }
+        const fullContent = item.raw || item.raw_response || item.summary || '';
+        body = `${ts ? `<div class="modal-section"><div class="modal-lbl">Date</div><p style="font-size:12px;color:var(--text3);font-family:var(--mono)">${ts}</p></div>` : ''}
+            <div class="modal-section"><div class="modal-lbl">📚 Complete 11-Section Teaching Digest</div>
+            <div class="modal-val" style="white-space:pre-wrap;font-family:var(--mono);font-size:12px;line-height:1.6">${esc(fullContent)}</div></div>
+            <div class="modal-section"><button class="btn-primary" style="width:100%;margin-top:10px" onclick='exportToWord(${safeItem},"paper")'>📄 Export to Word</button></div>`;
     }
     document.getElementById('modal-body').innerHTML = body;
     document.getElementById('modal-ov').classList.add('show');
 }
+
 async function deleteItem(id, type) {
     if (!confirm('Delete this item?')) return;
     try {
@@ -914,8 +928,8 @@ async function deleteItem(id, type) {
     } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
 
-// ──────────────────────────��──────────────────────────────────────────────────
-// EXPORT — HTML to Word (Works without external libraries)
+// ─────────────────────────────────────────────────────────────────────────────
+// EXPORT FUNCTIONS
 function exportToWord(item, type) {
     const title = item.title || (type === 'report' ? 'Radiology Report' : 'Paper Digest');
     const date = new Date().toLocaleString();
@@ -944,20 +958,10 @@ h1 { color: #2c3e50; border-bottom: 3px solid #4d9fff; text-align: center; }
     <div class="section-title">📋 Metadata</div>
     <div class="content">Subspecialty: ${escapeHtml(item.subspecialty || 'General')}<br>Modality: ${escapeHtml(item.modality || 'Any')}</div>`;
     } else {
-        // Use full data.raw for paper digests if available, otherwise fallback to parsed sections
-        if (item.raw) {
-            content += `
-    <div class="section-title">✦ Full 11-Section Digest</div>
-    <div class="content">${escapeHtml(item.raw)}</div>`;
-        } else {
-            content += `
-    <div class="section-title">✦ Summary</div>
-    <div class="content">${escapeHtml(item.summary || '—')}</div>
-    <div class="section-title">◈ Key Findings</div>
-    <div class="content">${escapeHtml((item.findings || '—').replace(/\n/g, '<br>'))}</div>
-    <div class="section-title">◎ Clinical Implications</div>
-    <div class="content">${escapeHtml(item.implications || '—')}</div>`;
-        }
+        const fullContent = item.raw || item.raw_response || item.summary || '';
+        content += `
+    <div class="section-title">✦ Complete Teaching Digest (11 Sections)</div>
+    <div class="content">${escapeHtml(fullContent)}</div>`;
     }
     content += `<div class="footer">Generated by Radiology Assistant — AI-Powered Radiology Training Workspace</div></body></html>`;
     const blob = new Blob([content], { type: 'application/msword' });
@@ -992,14 +996,8 @@ function exportAllToWord() {
             <div class="section-title">◈ Top 3 Differentials</div><div class="content">${escapeHtml((item.differentials || '—').replace(/\n/g, '<br>'))}</div>
             <div class="section-title">◎ Feedback</div><div class="content">${escapeHtml(item.feedback || '—')}</div>`;
         } else {
-            // Use full data.raw for paper digests if available
-            if (item.raw) {
-                combinedContent += `<div class="section-title">✦ Full 11-Section Digest</div><div class="content">${escapeHtml(item.raw)}</div>`;
-            } else {
-                combinedContent += `<div class="section-title">✦ Summary</div><div class="content">${escapeHtml(item.summary || '—')}</div>
-                <div class="section-title">◈ Key Findings</div><div class="content">${escapeHtml((item.findings || '—').replace(/\n/g, '<br>'))}</div>
-                <div class="section-title">◎ Clinical Implications</div><div class="content">${escapeHtml(item.implications || '—')}</div>`;
-            }
+            const fullContent = item.raw || item.raw_response || item.summary || '';
+            combinedContent += `<div class="section-title">✦ Complete Teaching Digest</div><div class="content">${escapeHtml(fullContent)}</div>`;
         }
         combinedContent += `<hr></div>`;
     });
@@ -1017,7 +1015,7 @@ function exportAllToWord() {
 function copyResult(type) {
     let text = '';
     if (type === 'report' && recentReport) text = `POLISHED IMPRESSION:\n${recentReport.impression}\n\nTOP 3 DIFFERENTIALS:\n${recentReport.differentials}\n\nFEEDBACK:\n${recentReport.feedback}`;
-    else if (type === 'digest' && recentDigest) text = recentDigest.raw || `SUMMARY:\n${recentDigest.summary}\n\nKEY FINDINGS:\n${recentDigest.findings}\n\nCLINICAL IMPLICATIONS:\n${recentDigest.implications}`;
+    else if (type === 'digest' && recentDigest) text = recentDigest.raw || recentDigest.raw_response || `SUMMARY:\n${recentDigest.summary}\n\nKEY FINDINGS:\n${recentDigest.findings}\n\nCLINICAL IMPLICATIONS:\n${recentDigest.implications}`;
     if (text) navigator.clipboard.writeText(text).then(() => toast('Copied ✓', 'ok'));
 }
 
