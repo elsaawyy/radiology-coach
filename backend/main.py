@@ -30,7 +30,7 @@ JWT_EXPIRE_H = 24 * 7   # 7 days
 
 # OpenAI Configuration
 OPENAI_API_URL = "https://api.openai.com/v1/responses"
-OPENAI_MODEL = "gpt-5.4"  
+OPENAI_MODEL = "gpt-5.4-mini"
 # Alternative: "gpt-4o" (better but more expensive)
 
 # ─── DATABASE ────────────────────────────────────────────────────────────────
