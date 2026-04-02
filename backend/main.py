@@ -191,39 +191,44 @@ async def me(user=Depends(get_current_user)):
     return {"id": user["id"], "email": user["email"], "name": user["name"]}
 
 # ─── OPENAI PROXY ──────────────────────────────────────────────────────────
-async def call_openai(api_key: str, system: str, prompt: str) -> str:
+async def call_openai(
+    api_key: str,
+    system: str,
+    prompt: str,
+    max_output_tokens: int = 6000,
+    temperature: float = 0.3,
+) -> str:
     async with httpx.AsyncClient(timeout=60) as client:
         resp = await client.post(
             OPENAI_API_URL,
             headers={
                 "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
             },
             json={
                 "model": OPENAI_MODEL,
-                "max_output_tokens": 2000,
-                "temperature": 0.3,
+                "max_output_tokens": max_output_tokens,
+                "temperature": temperature,
                 "input": [
                     {"role": "system", "content": system},
-                    {"role": "user", "content": prompt}
-                ]
-            }
+                    {"role": "user",   "content": prompt},
+                ],
+            },
         )
 
     if resp.status_code != 200:
         try:
-            error_data = resp.json()
-            error_detail = error_data.get("error", {}).get("message", "OpenAI error")
-        except:
+            error_detail = resp.json().get("error", {}).get("message", "OpenAI error")
+        except Exception:
             error_detail = resp.text
         raise HTTPException(status_code=502, detail=error_detail)
 
     data = resp.json()
-
     try:
         return data["output"][0]["content"][0]["text"]
-    except:
-        return str(data)
+    except Exception:
+        return str(data) 
+    
 def parse_section(text: str, label: str) -> str:
     m = re.search(rf"{label}[:\s]*([\s\S]*?)(?=\n[A-Z#]|$)", text, re.IGNORECASE)
     return m.group(1).strip() if m else ""
