@@ -713,32 +713,98 @@ async function polishReport() {
     if (!input) { toast('Enter a report or impression.', 'err'); return; }
     const key = getApiKey();
     if (!key) { toast('Set your API key first.', 'err'); return; }
+    
     const btn = document.getElementById('polish-btn');
     btn.disabled = true;
     document.getElementById('r-loading').classList.add('show');
     document.getElementById('r-result').classList.remove('show');
+    
     try {
         const data = await api('POST', '/reports/polish', {
-            mode: reportMode, subspecialty: document.getElementById('subspecialty').value,
-            modality: document.getElementById('modality').value, input_text: input,
-            api_key: key, save: document.getElementById('r-save').checked,
+            mode: reportMode,
+            subspecialty: document.getElementById('subspecialty').value,
+            modality: document.getElementById('modality').value,
+            input_text: input,
+            api_key: key,
+            save: document.getElementById('r-save').checked,
         });
-        document.getElementById('r-res-imp').textContent = data.impression || '—';
-        document.getElementById('r-res-diff').textContent = data.differentials || '—';
-        document.getElementById('r-res-fb').textContent = data.feedback || '—';
+        
+        // Get the raw response
+        let rawResponse = data.raw || '';
+        let impression = '';
+        let differentials = '';
+        let feedback = '';
+        
+        if (rawResponse) {
+            // Parse IMPRESSION section
+            const impressionMatch = rawResponse.match(/\*\*IMPRESSION\*\*[\s\S]*?(?=\n\*\*|$)/i);
+            if (impressionMatch) {
+                impression = impressionMatch[0]
+                    .replace(/\*\*IMPRESSION\*\*/i, '')
+                    .replace(/\*\*/g, '')
+                    .trim();
+            }
+            
+            // Parse DIFFERENTIAL DIAGNOSIS (only once)
+            const diffMatch = rawResponse.match(/\*\*DIFFERENTIAL DIAGNOSIS\*\*[\s\S]*?(?=\n\*\*|$)/i);
+            if (diffMatch) {
+                differentials = diffMatch[0]
+                    .replace(/\*\*DIFFERENTIAL DIAGNOSIS\*\*/i, '')
+                    .replace(/\*\*/g, '')
+                    .trim();
+            }
+            
+            // Parse TEACHING PEARL / FEEDBACK
+            const feedbackMatch = rawResponse.match(/\*\*TEACHING PEARL\*\*[\s\S]*?$/i);
+            if (feedbackMatch) {
+                feedback = feedbackMatch[0]
+                    .replace(/\*\*TEACHING PEARL\*\*/i, '')
+                    .replace(/\*\*/g, '')
+                    .trim();
+            }
+            
+            // If no sections found, use the whole response
+            if (!impression && !differentials && !feedback) {
+                impression = rawResponse.replace(/\*\*/g, '').trim();
+            }
+        } else {
+            // Fallback to parsed data
+            impression = data.impression || '—';
+            differentials = data.differentials || '—';
+            feedback = data.feedback || '—';
+        }
+        
+        // Clean up differentials - remove any duplicate headers
+        differentials = differentials
+            .replace(/◈ Top 3 Differentials/gi, '')
+            .replace(/TEACHING PEARL/gi, '')
+            .replace(/\*\*/g, '')
+            .trim();
+        
+        // Display in UI
+        document.getElementById('r-res-imp').textContent = impression || '—';
+        document.getElementById('r-res-diff').textContent = differentials || '—';
+        document.getElementById('r-res-fb').textContent = feedback || '—';
         document.getElementById('r-result').classList.add('show');
+        
         recentReport = data;
         const saveBtn = document.getElementById('r-save-btn');
         if (data.saved) {
-            saveBtn.textContent = '✓ Saved'; saveBtn.disabled = true;
+            saveBtn.textContent = '✓ Saved';
+            saveBtn.disabled = true;
             updateLibCount();
             toast('Report polished & saved ✓', 'ok');
         } else {
-            saveBtn.textContent = '💾 Save'; saveBtn.disabled = false;
+            saveBtn.textContent = '💾 Save';
+            saveBtn.disabled = false;
             toast('Report polished ✓', 'ok');
         }
-    } catch (e) { toast('Error: ' + e.message, 'err'); }
-    finally { btn.disabled = false; document.getElementById('r-loading').classList.remove('show'); }
+    } catch(e) { 
+        toast('Error: ' + e.message, 'err'); 
+    } finally { 
+        btn.disabled = false; 
+        document.getElementById('r-loading').classList.remove('show'); 
+    }
 }
 
 async function saveCurrentReport() {
