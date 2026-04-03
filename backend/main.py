@@ -231,11 +231,18 @@ async def call_openai(
     
 def parse_section(text: str, labels: list) -> str:
     for label in labels:
-        m = re.search(rf"{label}[:\s]*([\s\S]*?)(?=\n[A-Z#]|\Z)", text, re.IGNORECASE)
-        if m:
-            return m.group(1).strip()
+        # Look for markdown headers (## 1. LABEL or **LABEL** or LABEL:)
+        patterns = [
+            rf'##\s*\d+\.\s*{re.escape(label)}[\s\S]*?(?=\n##\s*\d+\.|\n\*\*|$)',
+            rf'\*\*{re.escape(label)}\*\*[\s\S]*?(?=\n\*\*|$)',
+            rf'{re.escape(label)}[:\s]*([\s\S]*?)(?=\n[A-Z#]|\Z)'
+        ]
+        for pattern in patterns:
+            m = re.search(pattern, text, re.IGNORECASE)
+            if m:
+                return m.group(0).strip() if m.group(0) else m.group(1).strip() if m.group(1) else ""
     return ""
-
+    
 # ─── REPORT COACH ────────────────────────────────────────────────────────────
 @app.post("/reports/polish")
 async def polish_report(req: PolishRequest, user=Depends(get_current_user)):
@@ -569,11 +576,22 @@ Bullet points only. Include at least 2 🔑 rules. Format: finding → implicati
 Only distinctions that change interpretation. Prefer paired contrasts (e.g., Lyme vs septic). No descriptive or explanatory sentences.
 
 5. DIFFERENTIALS
-Bullet list only (no paragraphs). Use color-coded system strictly:
-🟢 most likely (only one)
-⚪ others
-🔴 critical miss
-Each line format: diagnosis → key discriminator → management implication. Use compressed phrasing only.
+Use TABLE format when 3+ differentials exist. Use BULLET LIST when 2 or fewer.
+
+TABLE FORMAT (use when 3+ differentials):
+| Diagnosis | Key Discriminator | Management Implication |
+|-----------|-------------------|------------------------|
+| 🟢 [most likely] | [imaging feature that distinguishes] | [what to do] |
+| ⚪ [other] | [imaging feature that distinguishes] | [what to do] |
+| ⚪ [other] | [imaging feature that distinguishes] | [what to do] |
+| 🔴 [critical miss] | [why it mimics] | [consequence of missing] |
+
+BULLET FORMAT (use when 2 or fewer differentials):
+🟢 [most likely] → [discriminator] → [management implication]
+⚪ [other] → [discriminator] → [management implication]
+🔴 [critical miss] → [discriminator] → [management implication]
+
+Each row/line must earn its position based on imaging discrimination. Compressed phrasing only. No paragraphs.
 
 6. IMAGING STRATEGY
 Best modality → why (single line). Sequence/phase → question answered. Only problem-solving steps.
@@ -601,7 +619,7 @@ Before output: Remove all teaching language. Remove all redundancy. Convert sent
 
 Now produce the digest using the 11-section structure above."""
     
-    raw = await call_openai(req.api_key, system, prompt)
+    raw = await call_openai(req.api_key, system, prompt, max_tokens=4000)
     print("\n=== RAW RESPONSE ===\n")
     print(raw)
     print("\n====================\n")
@@ -630,6 +648,7 @@ Now produce the digest using the 11-section structure above."""
         result["id"] = pid
     
     return result
+
 @app.get("/papers")
 async def list_papers(user=Depends(get_current_user), skip: int = 0, limit: int = 50):
     q = papers.select().where(papers.c.user_id == user["id"])\
