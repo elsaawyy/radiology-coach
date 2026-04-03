@@ -247,106 +247,88 @@ async def polish_report(req: PolishRequest, user=Depends(get_current_user)):
     system = """You are an elite, U.S.-trained senior radiologist with subspecialty expertise. You produce detailed, evidence-based reports with clinical reasoning."""
 
     if req.mode == "a":
-        # ========== MODE A - Impression Only (with detailed clinical reasoning) ==========
-        prompt = f"""You are polishing a radiology report. PRESERVE THE ORIGINAL STRUCTURE but ENHANCE THE IMPRESSION with detailed clinical reasoning.
+        # ========== MODE A - Impression Only (with structured impression) ==========
+        prompt = f"""You are a senior radiologist polishing a radiology report. PRESERVE THE ORIGINAL STRUCTURE EXACTLY.
 
 ORIGINAL REPORT:
 {req.input_text}
 
 RULES:
-1. Keep ALL sections exactly as written (Patient Information, Imaging Study, Findings)
+1. Keep ALL sections exactly as written:
+   - Patient Information
+   - Imaging Study
+   - Findings (ALL details must remain unchanged)
+   - Any other sections
 
-2. Transform the IMPRESSION into a DETAILED, COMPREHENSIVE analysis that includes:
-   - Primary diagnosis with evidence basis (e.g., ">95% specificity per ACR LI-RADS v2018")
-   - Probability or risk percentages when known (e.g., "~38% malignancy risk at LR-3")
-   - Specific follow-up intervals with guidelines (e.g., "reassess at 6 months per LI-RADS v2018")
-   - Actionable recommendations (e.g., "multidisciplinary tumor board review")
-   - Clinical context integration
+2. ONLY rewrite the IMPRESSION section.
 
-3. ADD a DIFFERENTIAL DIAGNOSIS section with detailed explanations:
-   - At least 3 differentials
-   - Why each is considered (imaging features)
-   - Why each is more or less likely
+3. The IMPRESSION must follow this structure EXACTLY:
 
-4. ADD a CLINICAL RATIONALE section explaining the diagnostic reasoning
+   A. First paragraph (Narrative Impression):
+   - Write a smooth, professional paragraph (NOT bullets)
+   - Integrate clinical context (e.g., cirrhosis, hepatitis)
+   - Combine all lesions into a flowing sentence
+   - Include:
+     • lesion size + location
+     • arterial enhancement, washout, capsule (if present)
+     • LI-RADS category
+     • clear diagnosis when appropriate (e.g., HCC)
+   - End with a brief statement about background liver and absence/presence of complications
 
-5. Use numbered format for the impression (1., 2., 3.)
+   B. Differential Diagnosis (numbered list):
+   - 2–3 items maximum
+   - Use confident clinical language:
+     • "— favored"
+     • "— less likely"
+   - Must be clinically relevant (e.g., HCC, iCCA, dysplastic nodule)
 
-6. Use sophisticated confidence language with evidence citations
+   C. Clinical Rationale (short paragraph):
+   - Explain WHY the classification (LI-RADS) was assigned
+   - Reference major features (APHE, washout, capsule, size)
+   - Keep concise but clinically meaningful
+   - No long textbook explanations
 
-OUTPUT STRUCTURE (MUST INCLUDE):
-[Patient Information - preserved]
-[Imaging Study - preserved]
-[Findings - preserved]
+4. Tone:
+- Senior radiologist level
+- Concise but not overly brief
+- No hedging language
 
-IMPRESSION:
-1. [Primary diagnosis with evidence and management]
-2. [Secondary findings with follow-up]
-3. [Background findings with implications]
+5. PROHIBITED:
+- "could represent"
+- "possibly"
+- "cannot rule out"
 
-DIFFERENTIAL DIAGNOSIS:
-1. [Diagnosis] — [imaging features] — [clinical implication]
-2. [Diagnosis] — [imaging features] — [clinical implication]
-3. [Diagnosis] — [imaging features] — [clinical implication]
-
-CLINICAL RATIONALE:
-[Detailed explanation of why the primary diagnosis is favored]
-
-Now produce the polished report with DETAILED clinical reasoning."""
+OUTPUT:
+Return the FULL report with original structure preserved.
+ONLY the IMPRESSION section should be rewritten in the required format."""
 
     else:
-        # ========== MODE B - Full Report (with detailed clinical reasoning) ==========
-        prompt = f"""You are polishing a full radiology report. PRESERVE THE ORIGINAL STRUCTURE but ENHANCE with detailed clinical reasoning.
+        # ========== MODE B - Full Report ==========
+        prompt = f"""You are a senior radiologist polishing a full radiology report. PRESERVE THE ORIGINAL STRUCTURE EXACTLY.
 
 ORIGINAL REPORT:
 {req.input_text}
 
 RULES:
 1. Keep ALL sections exactly as written (Patient Information, Imaging Study, Findings)
+2. ONLY improve the IMPRESSION section
+3. Format impression as numbered bullets (1., 2., 3.)
+4. Use proper confidence language:
+   - "consistent with" → definitive
+   - "concerning for" → suspicious
+   - "favors X over Y" → differential
+5. PROHIBITED: "could represent", "possibly", "cannot rule out", "clinical correlation recommended"
+6. Add management implications when appropriate
 
-2. Transform the IMPRESSION into a DETAILED, COMPREHENSIVE analysis that includes:
-   - Primary diagnosis with evidence basis and specificity percentages
-   - Probability or risk percentages when known
-   - Specific follow-up intervals with guidelines
-   - Actionable recommendations (tumor board, surgery, surveillance)
-   - Clinical context integration
+OUTPUT: Complete report with original structure preserved, only IMPRESSION improved.
 
-3. ADD a DIFFERENTIAL DIAGNOSIS section with detailed explanations (3+ items)
-
-4. ADD a CLINICAL RATIONALE section explaining the diagnostic reasoning
-
-5. ADD a RECOMMENDATIONS section with specific next steps
-
-6. Use numbered format for the impression (1., 2., 3.)
-
-OUTPUT STRUCTURE (MUST INCLUDE):
-[Patient Information - preserved]
-[Imaging Study - preserved]
-[Findings - preserved]
-
+EXAMPLE OF CORRECT IMPRESSION FORMAT:
 IMPRESSION:
-1. [Primary diagnosis with evidence and management]
-2. [Secondary findings with follow-up]
-3. [Background findings with implications]
-
-DIFFERENTIAL DIAGNOSIS:
-1. [Diagnosis] — [imaging features] — [clinical implication]
-2. [Diagnosis] — [imaging features] — [clinical implication]
-3. [Diagnosis] — [imaging features] — [clinical implication]
-
-CLINICAL RATIONALE:
-[Detailed explanation of diagnostic reasoning with evidence]
-
-RECOMMENDATIONS:
-- [Specific actionable next step 1]
-- [Specific actionable next step 2]
-
-EXAMPLE OF DESIRED IMPRESSION:
-In the clinical setting of chronic hepatitis B and mild cirrhosis, a 2.6 cm segment 7 hepatic lesion demonstrates the constellation of arterial phase hyperenhancement, portal venous washout, and capsule appearance — findings diagnostic of hepatocellular carcinoma, LI-RADS 5 (>95% specificity per ACR LI-RADS v2018). A second 1.2 cm segment 4A lesion lacks definitive enhancement characteristics and remains indeterminate, LI-RADS 3 (∼38% malignancy risk), warranting surveillance at 6 months. Correlation with multidisciplinary tumor board is recommended for the LR-5 lesion.
-
-Now produce the polished full report with DETAILED clinical reasoning."""
+1. Lesion 1 demonstrates arterial hyperenhancement, washout, and capsule appearance — consistent with LR-5 (definite HCC).
+2. Lesion 2 is small and indeterminate — LR-3 (intermediate probability), warranting surveillance at 6 months.
+3. Background liver shows cirrhotic changes, requiring continued surveillance."""
     
-    raw = await call_openai(req.api_key, system, prompt, max_tokens=2500)
+    raw = await call_openai(req.api_key, system, prompt, max_tokens=2000)
     
     result = {
         "impression": raw,
@@ -411,124 +393,106 @@ async def delete_report(report_id: int, user=Depends(get_current_user)):
 # ─── PAPER DIGEST ────────────────────────────────────────────────────────────
 @app.post("/papers/digest")
 async def generate_digest(req: DigestRequest, user=Depends(get_current_user)):
-    system = """You are a U.S.-trained consultant radiology attending teaching a senior fellow at final readout level.
+    system = """You are a US-trained senior radiology attending teaching a fellow at final readout level.
 
-Your job is NOT to explain broadly. Your job is to train decision-level thinking and produce output that directly impacts diagnosis, management, and surgical planning.
+Your task: Summarize the provided radiology paper or case into the exact 8-section structure below.
 
-VOICE AND STYLE
-Consultant-to-fellow tone: direct, compressed, decisive
-No fluff
-No textbook exposition
-No generic teaching language
-No narrative or explanatory flow unless unavoidable
-Prefer pattern-based logic over sentences
-Use compressed formats: +, →, –, ± instead of prose
-Every line must change diagnosis, management, or safety
-Eliminate redundancy completely
-Replace sentences with high-density phrases whenever possible
-Maximum 12–15 words per sentence
-Think like a surgeon reading the report
+RULES (MANDATORY)
+- No teaching language ("start with," "look for," "this suggests," "remember that")
+- No repetition across sections
+- No narrative or explanatory flow
+- Use diagnostic shorthand (+ → – ±) instead of prose where possible
+- Every line must change diagnosis, management, or surgical planning
+- If a line does not affect a decision → delete it
+- Use 🔑 only for the single most important decision-driving fact per section (max 1 per section)
+- Use 🟢 for most likely diagnosis (only one)
+- Use 🔴 for critical miss (must not overlook)
 
-EMPHASIS RULES
-🔑 = single most important decision-driving fact only (max 1–2 per section)
-Do NOT use 🔑 for labels or structure
-No decorative emoji
+CRITICAL RETENTION RULE (MANDATORY)
+- Do NOT omit variables that alter surgical technique or approach
+- Must include: gap size, effective gap, tissue quality, chronicity, location, instability, associated structures
+- If a variable can change procedure type (repair vs graft vs non-op) → it MUST be included 🔑
+- If compression forces removal → remove background, NOT surgical variables
 
-DIFFERENTIAL LABELING (MANDATORY)
-🟢 = most likely (only ONE preferred)
-⚪ = other reasonable differentials
-🔴 = critical miss (must not be overlooked)"""
+ANTI-OMISSION GUARANTEE (MANDATORY)
+- Never delete or compress any imaging feature that changes diagnosis, staging, or management
+- If forced to shorten → rewrite, do NOT remove decision-relevant data
+- Imaging patterns, distribution, enhancement, chronicity, and structural relationships take priority over wording rules
+- Style rules must NEVER override clinical content preservation 🔑"""
 
-    prompt = f"""TASK
-When given a paper, abstract, article, excerpt, study summary, or topic in radiology, produce a high-yield attending-level digest that teaches the fellow how to interpret, differentiate, report, and avoid misses.
-
-PRIMARY GOAL
-Make the fellow think like an attending making real clinical decisions, not like a student recalling facts.
-
-MANDATORY CONTENT PRIORITIES
-Always prioritize:
-- completeness of disease/injury extent
-- location
-- severity
-- imaging features that change management
-- measurable thresholds or cutoffs when relevant
-- what determines treatment, surgery, escalation, or follow-up
-- real-world reporting implications
-- common misses and dangerous mimics
+    prompt = f"""OUTPUT STRUCTURE (use these exact headers)
 
 Here is the article/topic to summarize:
 
 {req.input_text}
 
-OUTPUT STRUCTURE
-Use the exact section headers below, in this exact order.
+1. BOTTOM LINE
+One sentence. What to tell the surgeon. No explanation.
+If paper is weak → start with: Limited evidence.
 
-1. CONSULTANT SUMMARY
-2–3 sentences maximum. Frame as a management/decision problem. No explanation—state conclusion + implication directly.
+2. HOW TO SEE IT
+3–5 search pattern steps. No complete sentences. Each step = decision checkpoint.
 
-2. CORE FRAMEWORK
-Stepwise structure WITHOUT teaching language. Use diagnostic logic (finding → implication). Each step = decision checkpoint. No narrative connectors.
+3. THE RULES
+Bullet points. Each line: finding → threshold → implication. Include 🔑 once.
 
-3. HIGH-YIELD RULES
-Bullet points only. Include at least 2 🔑 rules. Format: finding → implication. Include thresholds when relevant. Must state what determines management.
+4. DIFFERENTIALS
+Table with exactly 3 columns:
 
-4. NORMAL VS ABNORMAL
-Only distinctions that change interpretation. Prefer paired contrasts (e.g., Lyme vs septic). No descriptive or explanatory sentences.
+| Diagnosis | Key Discriminator | Next Step |
+|-----------|-------------------|------------|
+| 🟢 most likely | [discriminator] | [action] |
+| ⚪️ alternative | [discriminator] | [action] |
+| ⚪️ alternative | [discriminator] | [action] |
+| 🔴 critical miss | [discriminator] | [action] |
 
-5. DIFFERENTIALS
-Use TABLE format when 3+ differentials exist. Use BULLET LIST when 2 or fewer.
+MANDATORY:
+- Include ALL differentials mentioned in the source (no limit)
+- Do NOT truncate for brevity
+- Preserve rare but management-relevant entities
 
-TABLE FORMAT (use when 3+ differentials):
-| Diagnosis | Key Discriminator | Management Implication |
-|-----------|-------------------|------------------------|
-| 🟢 [most likely] | [imaging feature that distinguishes] | [what to do] |
-| ⚪ [other] | [imaging feature that distinguishes] | [what to do] |
-| ⚪ [other] | [imaging feature that distinguishes] | [what to do] |
-| 🔴 [critical miss] | [why it mimics] | [consequence of missing] |
+5. IMAGING
+Modality → what it answers → when to stop.
+No unnecessary alternatives.
 
-BULLET FORMAT (use when 2 or fewer differentials):
-🟢 [most likely] → [discriminator] → [management implication]
-⚪ [other] → [discriminator] → [management implication]
-🔴 [critical miss] → [discriminator] → [management implication]
+6. REPORT
+FINDINGS: objective description only. No diagnosis.
+IMPRESSION: diagnosis + management implication (one sentence).
+Add (Abstract only) if applicable
 
-Each row/line must earn its position based on imaging discrimination. Compressed phrasing only. No paragraphs.
+7. DON'T MISS
+Max 3 lines
+Format: missed entity → consequence
 
-6. IMAGING STRATEGY
-Best modality → why (single line). Sequence/phase → question answered. Only problem-solving steps.
+8. QUICK HITS
+Exam-level + real world anchors only
 
-7. REPORTING (ATTENDING LEVEL)
-1–2 sentences maximum. Must read like a final report impression. Must include management implication.
+BEHAVIOR RULES
+- If input is only abstract → use abstract; add (Abstract only)
+- Do not praise the paper
+- Do not restate background unless it changes management
+- Do not add a conclusion section
 
-8. PEARLS
-Real-world misses only. Pattern or contrast format. No explanation.
+QUALITY CHECK (SELF-ENFORCED)
+- Rewrite (do NOT delete) any important sentence violating style rules
+- Delete only non-decision or background content
+- Delete any sentence starting with: "Consider," "Look for," "Assess" (rewrite if important)
+- Every number must include threshold + implication
+- FINDINGS → no diagnostic labels
+- IMPRESSION → exactly one diagnosis + one action
 
-9. EXAM TRAPS
-Mandatory. Format strictly: pitfall → why wrong → how to avoid. No narrative.
-
-10. FAILURE MODE
-Direct outcome only. Focus on clinical harm, mismanagement, or surgical consequence.
-
-11. RAPID RECALL
-5–7 bullets maximum. Ultra-compressed anchors only. No explanation unless required for discrimination.
-
-FORMAT RULES
-No narrative flow between bullets or sections. No repetition across sections. No explanatory connectors. Replace prose with diagnostic shorthand whenever possible. If a line can be shortened → shorten it. If a line does not change a decision → delete it. Use 🔑 only for true decision-driving facts.
-
-FINAL QUALITY CHECK (MANDATORY)
-Before output: Remove all teaching language. Remove all redundancy. Convert sentences → diagnostic shorthand. Ensure every line affects diagnosis, management, or safety. If any line can be deleted without loss → delete it.
-
-Now produce the digest using the 11-section structure above."""
+Now produce the digest using the 8-section structure above."""
     
-    raw = await call_openai(req.api_key, system, prompt, max_tokens=4000)
+    raw = await call_openai(req.api_key, system, prompt, max_tokens=3000)
     print("\n=== RAW RESPONSE ===\n")
     print(raw)
     print("\n====================\n")
     
     # Parse sections
     result = {
-        "summary": parse_section(raw, ["CONSULTANT SUMMARY"]) or raw[:500],
-        "findings": parse_section(raw, ["HIGH-YIELD RULES"]),
-        "implications": parse_section(raw, ["FAILURE MODE"]),
+        "summary": parse_section(raw, ["BOTTOM LINE"]) or raw[:500],
+        "findings": parse_section(raw, ["THE RULES"]),
+        "implications": parse_section(raw, ["DON'T MISS"]),
         "raw": raw,
         "saved": False,
         "id": None,
@@ -548,7 +512,6 @@ Now produce the digest using the 11-section structure above."""
         result["id"] = pid
     
     return result
-
 @app.get("/papers")
 async def list_papers(user=Depends(get_current_user), skip: int = 0, limit: int = 50):
     q = papers.select().where(papers.c.user_id == user["id"])\
