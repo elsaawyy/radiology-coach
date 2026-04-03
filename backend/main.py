@@ -244,64 +244,62 @@ def parse_section(text: str, labels: list) -> str:
 # ─── REPORT COACH ────────────────────────────────────────────────────────────
 @app.post("/reports/polish")
 async def polish_report(req: PolishRequest, user=Depends(get_current_user)):
-    system = """You are an elite, U.S.-trained senior radiologist. You polish radiology reports while preserving their original structure."""
+    system = """You are an elite, U.S.-trained senior radiologist with subspecialty expertise. You produce detailed, evidence-based reports with clinical reasoning."""
 
     if req.mode == "a":
-        prompt = f"""You are polishing a radiology report. PRESERVE THE ORIGINAL STRUCTURE EXACTLY.
+        prompt = f"""You are polishing a radiology report. PRESERVE THE ORIGINAL STRUCTURE but ENHANCE THE IMPRESSION with detailed clinical reasoning.
 
 ORIGINAL REPORT:
 {req.input_text}
 
 RULES:
-1. Keep ALL sections exactly as written:
-   - Patient Information (Name, Age, Sex, Clinical history)
-   - Imaging Study (Modality, Date)
-   - Findings (ALL findings, including lesion details, measurements, enhancement patterns)
-   - Any other sections present
+1. Keep ALL sections exactly as written (Patient Information, Imaging Study, Findings)
 
-2. ONLY improve the IMPRESSION section at the end
+2. Transform the IMPRESSION into a DETAILED, COMPREHENSIVE analysis that includes:
+   - Primary diagnosis with evidence basis (e.g., ">95% specificity per ACR LI-RADS v2018")
+   - Probability or risk percentages when known (e.g., "~38% malignancy risk at LR-3")
+   - Specific follow-up intervals with guidelines (e.g., "reassess at 6 months per LI-RADS v2018")
+   - Actionable recommendations (e.g., "multidisciplinary tumor board review")
+   - Clinical context integration
 
-3. Format the impression as numbered bullets (1., 2., 3.)
+3. ADD a DIFFERENTIAL DIAGNOSIS section with detailed explanations:
+   - At least 3 differentials
+   - Why each is considered (imaging features)
+   - Why each is more or less likely
 
-4. Use proper confidence language:
-   - "consistent with" for definitive findings
-   - "findings are concerning for" for suspicious findings
-   - "favors X over Y" for differentials
+4. ADD a CLINICAL RATIONALE section explaining the diagnostic reasoning
 
-5. PROHIBITED phrases: "could represent", "possibly", "cannot rule out", "clinical correlation recommended"
+5. Use numbered format for the impression (1., 2., 3.)
 
-6. Add management implications when appropriate
+6. Use sophisticated confidence language with evidence citations
 
-OUTPUT: Return the COMPLETE report with the original structure preserved, only the IMPRESSION section improved.
+OUTPUT STRUCTURE (MUST INCLUDE):
+[Patient Information - preserved]
+[Imaging Study - preserved]
+[Findings - preserved]
 
-Example of good impression format:
 IMPRESSION:
-1. Lesion 1 demonstrates arterial hyperenhancement, washout, and capsule appearance — consistent with LR-5 (definite HCC).
-2. Lesion 2 is small and indeterminate — LR-3 (intermediate probability).
-3. Background liver shows cirrhotic changes, requiring continued surveillance.
+1. [Primary diagnosis with evidence and management]
+2. [Secondary findings with follow-up]
+3. [Background findings with implications]
 
-Now produce the polished report preserving all original sections."""
+DIFFERENTIAL DIAGNOSIS:
+1. [Diagnosis] — [imaging features that support/refute] — [clinical implication]
+2. [Diagnosis] — [imaging features that support/refute] — [clinical implication]
+3. [Diagnosis] — [imaging features that support/refute] — [clinical implication]
+
+CLINICAL RATIONALE:
+[Detailed explanation of why the primary diagnosis is favored, referencing specific imaging features and guidelines]
+
+EXAMPLE OF DESIRED IMPRESSION:
+In the clinical setting of chronic hepatitis B and mild cirrhosis, a 2.6 cm segment 7 hepatic lesion demonstrates the constellation of arterial phase hyperenhancement, portal venous washout, and capsule appearance — findings diagnostic of hepatocellular carcinoma, LI-RADS 5 (>95% specificity per ACR LI-RADS v2018). A second 1.2 cm segment 4A lesion lacks definitive enhancement characteristics and remains indeterminate, LI-RADS 3 (∼38% malignancy risk), warranting surveillance at 6 months. Background liver morphology is consistent with sequelae of chronic hepatic disease. Correlation with multidisciplinary tumor board is recommended for the LR-5 lesion.
+
+Now produce the polished report with DETAILED clinical reasoning."""
     
-    else:  # Mode B
-        prompt = f"""You are polishing a full radiology report. PRESERVE THE ORIGINAL STRUCTURE EXACTLY.
-
-ORIGINAL REPORT:
-{req.input_text}
-
-RULES:
-1. Keep ALL sections exactly as written (Patient Information, Imaging Study, Findings, etc.)
-2. ONLY improve the IMPRESSION section
-3. Format impression as numbered bullets
-4. Use proper confidence language
-5. Add management implications
-
-OUTPUT: Complete report with original structure, only impression improved."""
+    raw = await call_openai(req.api_key, system, prompt, max_tokens=2000)
     
-    raw = await call_openai(req.api_key, system, prompt)
-    
-    # For Mode A, return the full raw response to preserve all sections
     result = {
-        "impression": raw,  # Return full report, not just parsed impression
+        "impression": raw,
         "differentials": "",
         "feedback": "",
         "raw": raw,
@@ -316,7 +314,7 @@ OUTPUT: Complete report with original structure, only impression improved."""
             modality=req.modality,
             mode="impression_only" if req.mode == "a" else "full_report",
             input_text=req.input_text,
-            impression=raw,  # Save full report
+            impression=raw,
             differentials="",
             feedback="",
             raw_response=raw,
@@ -326,6 +324,8 @@ OUTPUT: Complete report with original structure, only impression improved."""
         result["id"] = rid
     
     return result
+
+
 @app.get("/reports")
 async def list_reports(user=Depends(get_current_user), skip: int = 0, limit: int = 50):
     q = reports.select().where(reports.c.user_id == user["id"])\
