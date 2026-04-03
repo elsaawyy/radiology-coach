@@ -707,7 +707,6 @@ function setReportMode(m) {
         document.getElementById('r-input').placeholder = 'Paste your full radiology report draft here…';
     }
 }
-
 async function polishReport() {
     const input = document.getElementById('r-input').value.trim();
     if (!input) { toast('Enter a report or impression.', 'err'); return; }
@@ -729,65 +728,24 @@ async function polishReport() {
             save: document.getElementById('r-save').checked,
         });
         
-        // Get the raw response
-        let rawResponse = data.raw || '';
-        let impression = '';
-        let differentials = '';
-        let feedback = '';
+        // Display the FULL raw response (contains all sections)
+        const fullReport = data.raw || data.impression || '—';
         
-        if (rawResponse) {
-            // Parse IMPRESSION section
-            const impressionMatch = rawResponse.match(/\*\*IMPRESSION\*\*[\s\S]*?(?=\n\*\*|$)/i);
-            if (impressionMatch) {
-                impression = impressionMatch[0]
-                    .replace(/\*\*IMPRESSION\*\*/i, '')
-                    .replace(/\*\*/g, '')
-                    .trim();
-            }
-            
-            // Parse DIFFERENTIAL DIAGNOSIS (only once)
-            const diffMatch = rawResponse.match(/\*\*DIFFERENTIAL DIAGNOSIS\*\*[\s\S]*?(?=\n\*\*|$)/i);
-            if (diffMatch) {
-                differentials = diffMatch[0]
-                    .replace(/\*\*DIFFERENTIAL DIAGNOSIS\*\*/i, '')
-                    .replace(/\*\*/g, '')
-                    .trim();
-            }
-            
-            // Parse TEACHING PEARL / FEEDBACK
-            const feedbackMatch = rawResponse.match(/\*\*TEACHING PEARL\*\*[\s\S]*?$/i);
-            if (feedbackMatch) {
-                feedback = feedbackMatch[0]
-                    .replace(/\*\*TEACHING PEARL\*\*/i, '')
-                    .replace(/\*\*/g, '')
-                    .trim();
-            }
-            
-            // If no sections found, use the whole response
-            if (!impression && !differentials && !feedback) {
-                impression = rawResponse.replace(/\*\*/g, '').trim();
-            }
-        } else {
-            // Fallback to parsed data
-            impression = data.impression || '—';
-            differentials = data.differentials || '—';
-            feedback = data.feedback || '—';
-        }
+        document.getElementById('r-res-imp').innerHTML = `<div style="white-space: pre-wrap; font-family: var(--mono); font-size: 12px; line-height: 1.6; background: var(--surface2); padding: 15px; border-radius: 8px;">${escapeHtml(fullReport)}</div>`;
         
-        // Clean up differentials - remove any duplicate headers
-        differentials = differentials
-            .replace(/◈ Top 3 Differentials/gi, '')
-            .replace(/TEACHING PEARL/gi, '')
-            .replace(/\*\*/g, '')
-            .trim();
+        // Hide the empty differentials and feedback sections
+        const diffSection = document.querySelector('#r-result .result-section:nth-child(3)');
+        const feedbackSection = document.querySelector('#r-result .result-section:nth-child(5)');
+        const dividers = document.querySelectorAll('#r-result .divider');
         
-        // Display in UI
-        document.getElementById('r-res-imp').textContent = impression || '—';
-        document.getElementById('r-res-diff').textContent = differentials || '—';
-        document.getElementById('r-res-fb').textContent = feedback || '—';
+        if (diffSection) diffSection.style.display = 'none';
+        if (feedbackSection) feedbackSection.style.display = 'none';
+        if (dividers[1]) dividers[1].style.display = 'none';
+        if (dividers[2]) dividers[2].style.display = 'none';
+        
         document.getElementById('r-result').classList.add('show');
-        
         recentReport = data;
+        
         const saveBtn = document.getElementById('r-save-btn');
         if (data.saved) {
             saveBtn.textContent = '✓ Saved';
