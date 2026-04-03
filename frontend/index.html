@@ -859,11 +859,21 @@ async function generateDigest() {
             save: document.getElementById('d-save').checked,
         });
         
-        // Display full data.raw (11-section digest) with proper formatting
+        // Display full data.raw (11-section digest)
         const summaryDiv = document.getElementById('d-res-sum');
         if (summaryDiv) {
             summaryDiv.innerHTML = `<div style="white-space: pre-wrap; font-family: var(--mono); font-size: 12px; line-height: 1.6; background: var(--surface2); padding: 15px; border-radius: 8px;">${escapeHtml(data.raw || '—')}</div>`;
         }
+        
+        // HIDE the empty Key Findings and Clinical Implications sections
+        const keyFindingsSection = document.querySelector('#d-result .result-section:nth-child(3)');
+        const implicationsSection = document.querySelector('#d-result .result-section:nth-child(5)');
+        const dividers = document.querySelectorAll('#d-result .divider');
+        
+        if (keyFindingsSection) keyFindingsSection.style.display = 'none';
+        if (implicationsSection) implicationsSection.style.display = 'none';
+        if (dividers[1]) dividers[1].style.display = 'none';
+        if (dividers[2]) dividers[2].style.display = 'none';
         
         document.getElementById('d-result').classList.add('show');
         recentDigest = data;
