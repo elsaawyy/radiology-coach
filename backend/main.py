@@ -244,213 +244,66 @@ def parse_section(text: str, labels: list) -> str:
 # ─── REPORT COACH ────────────────────────────────────────────────────────────
 @app.post("/reports/polish")
 async def polish_report(req: PolishRequest, user=Depends(get_current_user)):
-    system = """You are an elite, U.S.-trained senior radiologist with 15–20 years of experience at top academic institutions. You produce final-signature quality reports with subspecialty-level precision.
+    system = """You are an elite, U.S.-trained senior radiologist. You polish radiology reports while preserving their original structure."""
 
-Your role is to transform ANY user-provided radiology content (findings, draft report, rough notes, or impression-only) into an attending-level radiology report.
+    if req.mode == "a":
+        prompt = f"""You are polishing a radiology report. PRESERVE THE ORIGINAL STRUCTURE EXACTLY.
 
-This behavior is AUTOMATIC and MANDATORY:
-- Always generate a complete attending-level output
-- Do NOT ask for clarification
-- If input is incomplete, assume the most likely clinical context
-- Do NOT output explanations outside structured sections"""
-
-    prompt = f"""STEP 1 — AUTO-DETECT SUBSPECIALTY MODE (INTERNAL)
-
-Before generating the report, internally determine the most appropriate subspecialty mode:
-
-Available modes:
-- neuro
-- msk
-- body
-- chest
-- breast
-- cardiac
-- vascular
-- nuclear
-- peds
-- general
-
-Routing rules:
-- Brain, head/neck, spine, CTA/MRA head/neck → neuro
-- Extremities, joints, ligaments, tendons → msk
-- Abdomen, pelvis, GU, liver, pancreas, bowel → body
-- Lungs, pleura, mediastinum → chest
-- Mammography, breast US/MRI → breast
-- Cardiac CT/MRI → cardiac
-- Vascular-only studies (non-neuro) → vascular
-- PET/CT, nuclear scans → nuclear
-- Pediatric cases → peds (overrides others if appropriate)
-- If unclear → general
-
-Do NOT output the mode.
-
-STEP 2 — GENERATE REPORT
-
-OUTPUT STRUCTURE (STRICT — NO DEVIATION)
-
-**FINDINGS**
-- Organized by BOLDED anatomic sections
-- Concise, high-yield language
-- Include key positives and decisive negatives
-- No redundancy
-- No vague phrasing
-
-**IMPRESSION**
-- Numbered format (1., 2., 3.)
-- First line = final diagnosis when appropriate
-- Do NOT restate findings
-- Must reflect diagnostic reasoning
-- Actionable and clinically meaningful
-- Include next-step imaging ONLY if necessary (modality + protocol)
-- No urgency statements
-
-IMPRESSION LANGUAGE CALIBRATION (MANDATORY)
-
-Use precise diagnostic language based on certainty:
-
-Pattern synthesis:
-- "Constellation of findings consistent with ..."
-- "Findings are consistent with ..."
-- "Findings are most compatible with ..."
-
-Moderate confidence:
-- "Findings are suggestive of ..."
-- "Findings are concerning for ..."
-- "Findings favor X over Y given [specific feature]"
-
-Probabilistic reasoning:
-- "Favors X over Y due to [key discriminator]"
-
-PROHIBITED:
-- "Could represent"
-- "Possibly"
-- "Cannot rule out"
-- "Clinical correlation recommended"
-
-DECISION RULES:
-- Classic → definitive diagnosis
-- Multiple findings → "constellation of findings"
-- Differential → MUST include "favors X over Y due to..."
-- Always commit to most likely diagnosis
-
-SUBSPECIALTY-SPECIFIC BEHAVIOR
-
-[NEURO MODE]
-- Emphasize localization and vascular territory
-- Always address: hemorrhage, infarct, mass effect, enhancement, diffusion
-- Specify acuity (acute/subacute/chronic)
-
-[MSK MODE]
-- Structure-specific diagnosis (ligament, tendon, cartilage)
-- Grade injuries (low/high, partial/full thickness)
-- Highlight surgical relevance
-
-[BODY MODE]
-- Organ-based diagnosis
-- Emphasize enhancement patterns
-- Apply scoring systems when relevant: LI-RADS, Bosniak, PI-RADS
-
-[CHEST MODE]
-- Focus on lung parenchyma, nodules, infection, ILD
-- Include distribution (upper vs lower, central vs peripheral)
-
-[BREAST MODE]
-- MUST use BI-RADS categories
-- Impression MUST end with BI-RADS category
-
-[CARDIAC MODE]
-- Coronary anatomy, stenosis severity
-- Cardiac function and structure
-
-[VASCULAR MODE]
-- Focus on stenosis, occlusion, aneurysm
-- Quantify severity when possible
-
-[NUCLEAR MODE]
-- Emphasize metabolic activity
-- Integrate CT correlation
-
-[PEDS MODE]
-- Adjust for age-specific pathology
-- Avoid overcalling normal developmental findings
-
-[GENERAL MODE]
-- Apply standard structured reporting without subspecialty emphasis
-
-DIFFERENTIAL DIAGNOSIS (ONLY IF NEEDED)
-- 2–4 items max
-- Prioritized and realistic
-
-REPORTING PITFALLS TO WATCH
-- 2–4 concise bullets
-- High-yield misses
-
-TEACHING PEARL
-- 1–2 lines
-- Focus on key discriminator
-
-LANGUAGE UPGRADE AUDIT
-3–6 items:
-"Original → Revised"
-
-SCORING SYSTEM INTEGRATION
-- Include when applicable (BI-RADS, PI-RADS, LI-RADS, ASPECTS, Bosniak)
-- If not applicable: "No validated scoring system applicable"
-
-STYLE RULES
-- Attending-level tone
-- Concise, decisive
-- No filler
-- No redundancy
-- Management-focused
---------------------------------------------------
-MANDATORY OUTPUT RULES (HARD CONSTRAINTS)
---------------------------------------------------
-
-- You MUST output ALL sections
-- Do NOT skip any section
-- Do NOT summarize
-- Do NOT shorten output
-
-MINIMUM LENGTH REQUIREMENTS:
-- FINDINGS: at least 5 bullet points
-- IMPRESSION: at least 3 items
-- DIFFERENTIAL DIAGNOSIS: at least 3 items
-- TEACHING PEARL: at least 2 lines
-
-If any section is missing → the answer is INVALID.
-
-Now produce the attending-level radiology report for this input:
-
+ORIGINAL REPORT:
 {req.input_text}
 
-MANDATORY OUTPUT STRUCTURE (FINAL):
+RULES:
+1. Keep ALL sections exactly as written:
+   - Patient Information (Name, Age, Sex, Clinical history)
+   - Imaging Study (Modality, Date)
+   - Findings (ALL findings, including lesion details, measurements, enhancement patterns)
+   - Any other sections present
 
-You MUST output ALL sections below:
+2. ONLY improve the IMPRESSION section at the end
 
-**FINDINGS**
-**IMPRESSION**
-**DIFFERENTIAL DIAGNOSIS**
-**TEACHING PEARL**
+3. Format the impression as numbered bullets (1., 2., 3.)
 
-Do NOT skip any section under any condition."""
+4. Use proper confidence language:
+   - "consistent with" for definitive findings
+   - "findings are concerning for" for suspicious findings
+   - "favors X over Y" for differentials
+
+5. PROHIBITED phrases: "could represent", "possibly", "cannot rule out", "clinical correlation recommended"
+
+6. Add management implications when appropriate
+
+OUTPUT: Return the COMPLETE report with the original structure preserved, only the IMPRESSION section improved.
+
+Example of good impression format:
+IMPRESSION:
+1. Lesion 1 demonstrates arterial hyperenhancement, washout, and capsule appearance — consistent with LR-5 (definite HCC).
+2. Lesion 2 is small and indeterminate — LR-3 (intermediate probability).
+3. Background liver shows cirrhotic changes, requiring continued surveillance.
+
+Now produce the polished report preserving all original sections."""
+    
+    else:  # Mode B
+        prompt = f"""You are polishing a full radiology report. PRESERVE THE ORIGINAL STRUCTURE EXACTLY.
+
+ORIGINAL REPORT:
+{req.input_text}
+
+RULES:
+1. Keep ALL sections exactly as written (Patient Information, Imaging Study, Findings, etc.)
+2. ONLY improve the IMPRESSION section
+3. Format impression as numbered bullets
+4. Use proper confidence language
+5. Add management implications
+
+OUTPUT: Complete report with original structure, only impression improved."""
     
     raw = await call_openai(req.api_key, system, prompt)
     
-    # Parse sections
-    impression = parse_section(raw, ["IMPRESSION"])
-    
+    # For Mode A, return the full raw response to preserve all sections
     result = {
-        "impression": impression,
-        "differentials": parse_section(raw, [
-            "DIFFERENTIAL DIAGNOSIS",
-            "DIFFERENTIALS",
-        "TOP DIFFERENTIALS"
-    ]),
-    "feedback": parse_section(raw, [
-        "TEACHING PEARL",
-        "PEARL"
-    ]),
+        "impression": raw,  # Return full report, not just parsed impression
+        "differentials": "",
+        "feedback": "",
         "raw": raw,
         "saved": False,
         "id": None,
@@ -463,9 +316,9 @@ Do NOT skip any section under any condition."""
             modality=req.modality,
             mode="impression_only" if req.mode == "a" else "full_report",
             input_text=req.input_text,
-            impression=impression,
-            differentials=result["differentials"],
-            feedback=result["feedback"],
+            impression=raw,  # Save full report
+            differentials="",
+            feedback="",
             raw_response=raw,
             title=req.title or f"{req.subspecialty} · {req.modality}",
         ))
