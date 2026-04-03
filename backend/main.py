@@ -247,6 +247,7 @@ async def polish_report(req: PolishRequest, user=Depends(get_current_user)):
     system = """You are an elite, U.S.-trained senior radiologist with subspecialty expertise. You produce detailed, evidence-based reports with clinical reasoning."""
 
     if req.mode == "a":
+        # ========== MODE A - Impression Only (with detailed clinical reasoning) ==========
         prompt = f"""You are polishing a radiology report. PRESERVE THE ORIGINAL STRUCTURE but ENHANCE THE IMPRESSION with detailed clinical reasoning.
 
 ORIGINAL REPORT:
@@ -284,19 +285,68 @@ IMPRESSION:
 3. [Background findings with implications]
 
 DIFFERENTIAL DIAGNOSIS:
-1. [Diagnosis] — [imaging features that support/refute] — [clinical implication]
-2. [Diagnosis] — [imaging features that support/refute] — [clinical implication]
-3. [Diagnosis] — [imaging features that support/refute] — [clinical implication]
+1. [Diagnosis] — [imaging features] — [clinical implication]
+2. [Diagnosis] — [imaging features] — [clinical implication]
+3. [Diagnosis] — [imaging features] — [clinical implication]
 
 CLINICAL RATIONALE:
-[Detailed explanation of why the primary diagnosis is favored, referencing specific imaging features and guidelines]
-
-EXAMPLE OF DESIRED IMPRESSION:
-In the clinical setting of chronic hepatitis B and mild cirrhosis, a 2.6 cm segment 7 hepatic lesion demonstrates the constellation of arterial phase hyperenhancement, portal venous washout, and capsule appearance — findings diagnostic of hepatocellular carcinoma, LI-RADS 5 (>95% specificity per ACR LI-RADS v2018). A second 1.2 cm segment 4A lesion lacks definitive enhancement characteristics and remains indeterminate, LI-RADS 3 (∼38% malignancy risk), warranting surveillance at 6 months. Background liver morphology is consistent with sequelae of chronic hepatic disease. Correlation with multidisciplinary tumor board is recommended for the LR-5 lesion.
+[Detailed explanation of why the primary diagnosis is favored]
 
 Now produce the polished report with DETAILED clinical reasoning."""
+
+    else:
+        # ========== MODE B - Full Report (with detailed clinical reasoning) ==========
+        prompt = f"""You are polishing a full radiology report. PRESERVE THE ORIGINAL STRUCTURE but ENHANCE with detailed clinical reasoning.
+
+ORIGINAL REPORT:
+{req.input_text}
+
+RULES:
+1. Keep ALL sections exactly as written (Patient Information, Imaging Study, Findings)
+
+2. Transform the IMPRESSION into a DETAILED, COMPREHENSIVE analysis that includes:
+   - Primary diagnosis with evidence basis and specificity percentages
+   - Probability or risk percentages when known
+   - Specific follow-up intervals with guidelines
+   - Actionable recommendations (tumor board, surgery, surveillance)
+   - Clinical context integration
+
+3. ADD a DIFFERENTIAL DIAGNOSIS section with detailed explanations (3+ items)
+
+4. ADD a CLINICAL RATIONALE section explaining the diagnostic reasoning
+
+5. ADD a RECOMMENDATIONS section with specific next steps
+
+6. Use numbered format for the impression (1., 2., 3.)
+
+OUTPUT STRUCTURE (MUST INCLUDE):
+[Patient Information - preserved]
+[Imaging Study - preserved]
+[Findings - preserved]
+
+IMPRESSION:
+1. [Primary diagnosis with evidence and management]
+2. [Secondary findings with follow-up]
+3. [Background findings with implications]
+
+DIFFERENTIAL DIAGNOSIS:
+1. [Diagnosis] — [imaging features] — [clinical implication]
+2. [Diagnosis] — [imaging features] — [clinical implication]
+3. [Diagnosis] — [imaging features] — [clinical implication]
+
+CLINICAL RATIONALE:
+[Detailed explanation of diagnostic reasoning with evidence]
+
+RECOMMENDATIONS:
+- [Specific actionable next step 1]
+- [Specific actionable next step 2]
+
+EXAMPLE OF DESIRED IMPRESSION:
+In the clinical setting of chronic hepatitis B and mild cirrhosis, a 2.6 cm segment 7 hepatic lesion demonstrates the constellation of arterial phase hyperenhancement, portal venous washout, and capsule appearance — findings diagnostic of hepatocellular carcinoma, LI-RADS 5 (>95% specificity per ACR LI-RADS v2018). A second 1.2 cm segment 4A lesion lacks definitive enhancement characteristics and remains indeterminate, LI-RADS 3 (∼38% malignancy risk), warranting surveillance at 6 months. Correlation with multidisciplinary tumor board is recommended for the LR-5 lesion.
+
+Now produce the polished full report with DETAILED clinical reasoning."""
     
-    raw = await call_openai(req.api_key, system, prompt, max_tokens=2000)
+    raw = await call_openai(req.api_key, system, prompt, max_tokens=2500)
     
     result = {
         "impression": raw,
@@ -324,7 +374,6 @@ Now produce the polished report with DETAILED clinical reasoning."""
         result["id"] = rid
     
     return result
-
 
 @app.get("/reports")
 async def list_reports(user=Depends(get_current_user), skip: int = 0, limit: int = 50):
