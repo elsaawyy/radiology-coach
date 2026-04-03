@@ -195,40 +195,38 @@ async def call_openai(
     api_key: str,
     system: str,
     prompt: str,
-    max_output_tokens: int = 6000,
+    max_tokens: int = 4000,  # Add this parameter
     temperature: float = 0.3,
 ) -> str:
-    async with httpx.AsyncClient(timeout=60) as client:
+    """Proxy OpenAI call — user key used per-request, never persisted."""
+    async with httpx.AsyncClient(timeout=90) as client:
         resp = await client.post(
-            OPENAI_API_URL,
+            "https://api.openai.com/v1/chat/completions",
             headers={
                 "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
+                "Content-Type": "application/json"
             },
             json={
-                "model": OPENAI_MODEL,
-                "max_output_tokens": max_output_tokens,
+                "model": "gpt-4o-mini",
+                "max_tokens": max_tokens,  # Use the parameter
                 "temperature": temperature,
-                "input": [
+                "messages": [
                     {"role": "system", "content": system},
-                    {"role": "user",   "content": prompt},
-                ],
-            },
+                    {"role": "user", "content": prompt}
+                ]
+            }
         )
-
+    
     if resp.status_code != 200:
         try:
-            error_detail = resp.json().get("error", {}).get("message", "OpenAI error")
-        except Exception:
+            error_data = resp.json()
+            error_detail = error_data.get("error", {}).get("message", f"OpenAI error {resp.status_code}")
+        except:
             error_detail = resp.text
         raise HTTPException(status_code=502, detail=error_detail)
-
-    data = resp.json()
-    try:
-        return data["output"][0]["content"][0]["text"]
-    except Exception:
-        return str(data) 
     
+    data = resp.json()
+    return data["choices"][0]["message"]["content"]   
 def parse_section(text: str, labels: list) -> str:
     for label in labels:
         # Look for markdown headers (## 1. LABEL or **LABEL** or LABEL:)
