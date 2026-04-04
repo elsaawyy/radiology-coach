@@ -527,6 +527,14 @@ Format: plain bullets, no sub-structure needed.
 Produce the full digest now. Do not skip sections. Do not truncate. Be exhaustive."""
 
     raw = await call_openai(req.api_key, system, prompt, max_tokens=6000)
+    
+    # ========== PUT IT HERE ==========
+    print("="*80)
+    print("AI RAW RESPONSE:")
+    print(raw)
+    print("="*80)
+    print(f"LENGTH: {len(raw)} characters")
+    # =================================
 
     def parse_section(text, headers):
         for header in headers:
@@ -562,6 +570,8 @@ Produce the full digest now. Do not skip sections. Do not truncate. Be exhaustiv
         ))
         result["saved"] = True
         result["id"] = pid
+        
+        
 
     return result
 
