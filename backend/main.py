@@ -247,93 +247,58 @@ async def polish_report(req: PolishRequest, user=Depends(get_current_user)):
     system = """You are an elite, U.S.-trained senior radiologist with subspecialty expertise. You produce final-signature quality reports with structured, actionable impressions."""
 
     if req.mode == "a":
-        prompt = f"""You are a senior radiologist polishing a radiology report. PRESERVE THE ORIGINAL STRUCTURE EXACTLY.
+        prompt = f"""You are a US-trained senior radiologist at final signature level. 
+        
+Analyze this radiology report and produce ONLY the structured output below. Do NOT repeat the original report.
 
 ORIGINAL REPORT:
 {req.input_text}
 
-RULES:
-1. Keep ALL sections exactly as written:
-   - Patient Information
-   - Imaging Study
-   - Findings (ALL details must remain unchanged)
-   - Any other sections
+PROHIBITED LANGUAGE (never use these):
+- "could represent", "possibly", "cannot rule out", "clinical correlation recommended"
+- "suggesting", "may represent", "suggestive of", "likely representing"
 
-2. ONLY rewrite the IMPRESSION section following the structure below.
-
-3. IMPRESSION STRUCTURE (use these EXACT sections):
+OUTPUT EXACTLY THESE 4 SECTIONS — nothing before, nothing after:
 
 **IMPRESSION**
-State the most likely diagnosis first (no hedging if clear). Use structured reasoning where appropriate:
-- "Constellation of findings consistent with ..."
-- "Favor ... over ... given ..."
-- "Sequela of ..."
-Be clinically actionable. Do NOT restate findings. Recommend next imaging only if necessary (specific modality/protocol).
-
-**DIFFERENTIAL DIAGNOSIS** (only if needed):
-List 2–4 prioritized entities.
-
-**REPORTING PITFALLS**:
-List 2–4 commonly missed or high-risk considerations.
-
-**TEACHING PEARL**:
-1–2 lines max; focus on key discriminator or management insight.
-
-**LANGUAGE UPGRADE AUDIT**:
-Convert weak phrases → strong phrasing (3–6 examples).
-Focus on removing hedging, vagueness, redundancy.
-
-**SCORING SYSTEM**:
-Include validated imaging scoring system if applicable.
-If not applicable, explicitly state: "No validated scoring system applies."
-
-4. Tone:
-- Senior radiologist level
-- Concise but not overly brief
-- No hedging language
-
-5. PROHIBITED:
-- "could represent"
-- "possibly"
-- "cannot rule out"
-- "clinical correlation recommended"
-- "suggesting"
-- "may represent"
-
-OUTPUT:
-Return the FULL report with original structure preserved.
-ONLY the IMPRESSION section should be rewritten in the required format.
-
-EXAMPLE OF CORRECT IMPRESSION SECTION:
-
-**IMPRESSION**
-Constellation of findings consistent with hepatocellular carcinoma (HCC), LI-RADS 5, given arterial hyperenhancement, washout, and capsule in a cirrhotic liver. Lesion 2 is indeterminate, LI-RADS 3. No tumor in vein.
+Write 2-4 sentences. State the primary diagnosis with confidence. Do NOT restate findings — interpret them. Include follow-up recommendation only if clinically necessary (specific modality + timeframe).
+Format: Direct, declarative sentences. No bullet points here.
 
 **DIFFERENTIAL DIAGNOSIS**
-1. HCC — favored
-2. Intrahepatic cholangiocarcinoma — less likely (no targetoid features)
-3. Dysplastic nodule — less likely (no APHE)
+List 3 prioritized differentials. Each must follow this format:
+1. [Diagnosis] — [specific imaging feature that supports it] + [what makes it more/less likely]
+2. [Diagnosis] — [specific imaging feature that supports it] + [what makes it more/less likely]  
+3. [Diagnosis] — [specific imaging feature that supports it] + [what makes it more/less likely]
 
-**REPORTING PITFALLS**
-1. Missing washout on portal venous phase → undercall HCC
-2. Overcalling capsule on delayed phase → false LR-5
-3. Ignoring ancillary features → wrong category
-
-**TEACHING PEARL**
-LI-RADS 5 requires nonrim APHE + washout or capsule; size <10mm cannot be LR-5.
+**REASONING**
+Write 3-5 sentences explaining the clinico-radiographic reasoning. Connect the imaging pattern to the diagnosis. Mention what findings were used and what was excluded. This is the "thinking out loud" section for teaching.
 
 **LANGUAGE UPGRADE AUDIT**
-- "may represent" → "consistent with"
-- "could be" → "favors"
-- "suspicious for" → "diagnostic of"
+List 3-5 weak phrases found in the original report → replace with strong attending-level phrasing.
+Format: "weak phrase" → "strong replacement"
 
-**SCORING SYSTEM**
-LI-RADS v2018 applied.
+EXAMPLE OUTPUT FORMAT:
 
-Now produce the polished report with the IMPRESSION section in the required format."""
-    
+**IMPRESSION**
+Right lower lobe airspace consolidation in the setting of cough and fever is most consistent with community-acquired pneumonia. No parapneumonic effusion or pneumothorax. Cardiac silhouette and mediastinum are unremarkable. Recommend follow-up chest radiograph in 6–8 weeks to confirm resolution and exclude an underlying mass.
+
+**DIFFERENTIAL DIAGNOSIS**
+1. Community-acquired pneumonia — lobar/segmental airspace consolidation in febrile patient with cough is the classic presentation; right lower lobe is the most common site.
+2. Aspiration pneumonitis — right lower lobe is gravitationally dependent; elevate if aspiration risk present in clinical history.
+3. Post-obstructive consolidation — endobronchial lesion can mimic pneumonia; absence of volume loss makes this less likely, but warrants consideration if consolidation fails to clear.
+
+**REASONING**
+The combination of lobar airspace opacification in the right lower zone with fever and cough creates a coherent clinico-radiographic syndrome strongly favoring infectious consolidation. The absence of pleural effusion argues against a complex or necrotizing process. The key imaging driver is the pattern and distribution — patchy-to-confluent airspace disease respecting lobar anatomy.
+
+**LANGUAGE UPGRADE AUDIT**
+- "suggestive of consolidation" → "consistent with consolidation"
+- "likely representing pneumonia" → "diagnostic of pneumonia in this clinical context"
+- "no evidence of" → "absence of"
+
+Now produce the output for the report above. Start directly with **IMPRESSION**."""
+
     else:
-        # Mode B - Full Report (keep existing)
+        # Mode B - Full Report (unchanged)
         prompt = f"""You are a senior radiologist polishing a full radiology report. PRESERVE THE ORIGINAL STRUCTURE EXACTLY.
 
 ORIGINAL REPORT:
@@ -348,28 +313,36 @@ RULES:
 6. Add management implications when appropriate
 
 OUTPUT: Return the COMPLETE report with original structure preserved, only IMPRESSION improved."""
-    
+
     raw = await call_openai(req.api_key, system, prompt, max_tokens=6000)
-    
+
     if req.mode == "a":
+        def parse_report_section(text, label):
+            pattern = rf'\*\*{re.escape(label)}\*\*\s*\n([\s\S]*?)(?=\n\*\*[A-Z]|\Z)'
+            match = re.search(pattern, text, re.IGNORECASE)
+            return match.group(1).strip() if match else ""
+
         result = {
-            "impression": raw,
-            "differentials": "",
-            "feedback": "",
+            "impression":    parse_report_section(raw, "IMPRESSION"),
+            "differentials": parse_report_section(raw, "DIFFERENTIAL DIAGNOSIS"),
+            "feedback":      parse_report_section(raw, "REASONING"),
+            "audit":         parse_report_section(raw, "LANGUAGE UPGRADE AUDIT"),
             "raw": raw,
             "saved": False,
             "id": None,
         }
     else:
+        # Mode B - unchanged
         result = {
             "impression": raw,
             "differentials": "",
             "feedback": "",
+            "audit": "",
             "raw": raw,
             "saved": False,
             "id": None,
         }
-    
+
     if req.save:
         rid = await database.execute(reports.insert().values(
             user_id=user["id"],
@@ -378,16 +351,15 @@ OUTPUT: Return the COMPLETE report with original structure preserved, only IMPRE
             mode="impression_only" if req.mode == "a" else "full_report",
             input_text=req.input_text,
             impression=result["impression"],
-            differentials="",
-            feedback="",
+            differentials=result["differentials"],
+            feedback=result["feedback"],
             raw_response=raw,
             title=req.title or f"{req.subspecialty} · {req.modality}",
         ))
         result["saved"] = True
         result["id"] = rid
-    
-    return result
 
+    return result
 
 
 

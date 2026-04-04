@@ -488,12 +488,14 @@ textarea::placeholder { color:var(--text3); }
         <label class="save-check"><input type="checkbox" id="r-save" checked> Save to library</label>
       </div>
       <div class="loading" id="r-loading"><div class="spinner"></div><span>Polishing report…</span></div>
-      <div class="result-card" id="r-result">
+    <div class="result-card" id="r-result">
         <div class="result-section"><div class="result-tag tag-g">✦ Polished Impression</div><div class="result-body" id="r-res-imp"></div></div>
         <div class="divider"></div>
-        <div class="result-section"><div class="result-tag tag-a">◈ Top 3 Differentials</div><div class="result-body mono" id="r-res-diff"></div></div>
+        <div class="result-section"><div class="result-tag tag-a">◈ Differential Diagnosis</div><div class="result-body mono" id="r-res-diff"></div></div>
         <div class="divider"></div>
-        <div class="result-section"><div class="result-tag tag-v">◎ Feedback &amp; Rationale</div><div class="result-body" id="r-res-fb"></div></div>
+        <div class="result-section"><div class="result-tag tag-v">◎ Reasoning</div><div class="result-body" id="r-res-fb"></div></div>
+        <div class="divider"></div>
+        <div class="result-section"><div class="result-tag" style="color:var(--amber)">⚡ Language Upgrade Audit</div><div class="result-body mono" id="r-res-audit"></div></div>
         <div class="divider"></div>
         <div class="result-actions"><button class="btn-sm save" id="r-save-btn" onclick="saveCurrentReport()">💾 Save</button><button class="btn-sm" onclick="copyResult('report')">📋 Copy</button></div>
       </div>
@@ -724,21 +726,27 @@ async function polishReport() {
             save: document.getElementById('r-save').checked,
         });
         
-        // Display the FULL raw response (contains all sections)
-        const fullReport = data.raw || data.impression || '—';
-        
-        document.getElementById('r-res-imp').innerHTML = `<div style="white-space: pre-wrap; font-family: var(--mono); font-size: 12px; line-height: 1.6; background: var(--surface2); padding: 15px; border-radius: 8px;">${escapeHtml(fullReport)}</div>`;
-        
-        // Hide the empty differentials and feedback sections
-        const diffSection = document.querySelector('#r-result .result-section:nth-child(3)');
-        const feedbackSection = document.querySelector('#r-result .result-section:nth-child(5)');
-        const dividers = document.querySelectorAll('#r-result .divider');
-        
-        if (diffSection) diffSection.style.display = 'none';
-        if (feedbackSection) feedbackSection.style.display = 'none';
-        if (dividers[1]) dividers[1].style.display = 'none';
-        if (dividers[2]) dividers[2].style.display = 'none';
-        
+      // Show all 4 sections cleanly
+        const imp  = data.impression    || data.raw || '—';
+        const diff = data.differentials || '—';
+        const fb   = data.feedback      || '—';
+        const audit= data.audit         || '';
+
+        document.getElementById('r-res-imp').innerHTML  = `<div style="white-space:pre-wrap;font-size:13px;line-height:1.75">${escapeHtml(imp)}</div>`;
+        document.getElementById('r-res-diff').innerHTML = `<div style="white-space:pre-wrap;font-size:12px;line-height:1.75;font-family:var(--mono)">${escapeHtml(diff)}</div>`;
+        document.getElementById('r-res-fb').innerHTML   = `<div style="white-space:pre-wrap;font-size:13px;line-height:1.75">${escapeHtml(fb)}</div>`;
+
+        // Show audit section if exists
+        const auditSection = document.getElementById('r-res-audit');
+        if (auditSection && audit) {
+            auditSection.closest('.result-section').style.display = '';
+            auditSection.innerHTML = `<div style="white-space:pre-wrap;font-size:12px;line-height:1.75;font-family:var(--mono)">${escapeHtml(audit)}</div>`;
+        }
+
+        // Make sure all sections are visible
+        document.querySelectorAll('#r-result .result-section').forEach(s => s.style.display = '');
+        document.querySelectorAll('#r-result .divider').forEach(d => d.style.display = '');
+
         document.getElementById('r-result').classList.add('show');
         recentReport = data;
         
