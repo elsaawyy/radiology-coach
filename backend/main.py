@@ -427,83 +427,93 @@ async def delete_report(report_id: int, user=Depends(get_current_user)):
 # ─── PAPER DIGEST ────────────────────────────────────────────────────────────
 @app.post("/papers/digest")
 async def generate_digest(req: DigestRequest, user=Depends(get_current_user)):
-    system = """You are a US-trained senior radiology attending teaching a fellow at final readout level.
+    system = """You are a US-trained senior radiology attending at final readout level.
 
-Your task: Extract surgically actionable data from the provided radiology paper or case.
+MISSION: Convert any radiology paper/case into a surgically actionable digest.
 
-CRITICAL RULES:
-- EVERY NUMBER must have a threshold and an implication
-- EVERY VERB must be a surgical action
-- Use 🔑 for most important decision-driving fact per section
-- Use 🟢 for most likely diagnosis, 🔴 for critical miss
+ABSOLUTE RULES:
+- Every number → must have a threshold AND a surgical implication
+- Every verb → must be a surgical action (repair, reconstruct, augment, debride...)
+- 🔑 = single most decision-driving fact per section
+- 🟢 = most likely diagnosis, ⚪ = alternative, 🔴 = critical miss
+- Be brutally concise. No filler. No passive voice.
+- The DIFFERENTIALS section must always be a markdown table with columns: Diagnosis | Key Discriminator | Next Step
+- The REPORT section must have two sub-headers: FINDINGS: and IMPRESSION:
 """
 
-    prompt = f"""Here is the article/topic to summarize:
+    prompt = f"""Digest this radiology article/case:
 
 {req.input_text}
 
-OUTPUT STRUCTURE - Use these EXACT 11 sections:
+OUTPUT STRUCTURE — use EXACTLY these 8 sections, numbered and bolded:
 
-1. CONSULTANT SUMMARY
-2. CORE FRAMEWORK
-3. HIGH-YIELD RULES
-4. NORMAL VS ABNORMAL
-5. DIFFERENTIALS
-6. IMAGING STRATEGY
-7. REPORTING
-8. PEARLS
-9. EXAM TRAPS
-10. FAILURE MODE
-11. RAPID RECALL
+1. **BOTTOM LINE**
+   One sentence: [key finding] → [surgical decision]. Include measurement threshold.
 
-Produce the digest exactly using numbers, surgical actions, thresholds, and emojis for differentials (🟢⚪🔴)."""
+2. **HOW TO SEE IT**
+   Bullet list of imaging signs. Each bullet = one actionable observation. Include 🔑 on the most critical sign.
+
+3. **THE RULES**
+   Bullet list of decision thresholds. Format: [threshold] → [surgical action] → [label]. Include 🔑 on the most important rule.
+
+4. **DIFFERENTIALS**
+   Markdown table: | Diagnosis | Key Discriminator | Next Step |
+   Use 🟢 for most likely, ⚪ for alternatives, 🔴 for critical miss.
+
+5. **IMAGING**
+   Bullet list. Format: [modality] → [what it shows] → [surgical implication]
+
+6. **REPORT**
+   Write a complete ready-to-paste radiology report with:
+   FINDINGS: (2–4 sentences, specific measurements)
+   IMPRESSION: (1–2 sentences with surgical recommendation)
+
+7. **DON'T MISS**
+   Bullet list of critical errors radiologists make. Each = one pitfall → one consequence.
+
+8. **QUICK HITS**
+   Bullet list of rapid recall facts. Short. Dense. Memorable.
+
+Produce output exactly as specified. Use numbers, surgical verbs, measurement thresholds, emojis."""
 
     raw = await call_openai(req.api_key, system, prompt, max_tokens=3500)
 
-    # Function to parse a section fully
     def parse_section(text, headers):
         for header in headers:
-            pattern = rf'{header}[:\s]*\n?([\s\S]*?)(?=\n\d+\.|\n[A-Z]|\Z)'
+            pattern = rf'{header}[:\s]*\n?([\s\S]*?)(?=\n\d+\.|\n\*\*\d+\.|\Z)'
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
                 return match.group(1).strip()
         return None
 
-    # استخراج كل الأقسام
     result = {
-        "consultant_summary": parse_section(raw, ["CONSULTANT SUMMARY"]) or raw[:500],
-        "core_framework": parse_section(raw, ["CORE FRAMEWORK"]),
-        "high_yield_rules": parse_section(raw, ["HIGH-YIELD RULES"]),
-        "normal_vs_abnormal": parse_section(raw, ["NORMAL VS ABNORMAL"]),
-        # DIFFERENTIALS: ناخد الجدول بالكامل كما جاء من AI
-        "differentials": parse_section(raw, ["DIFFERENTIALS"]),
-        "imaging_strategy": parse_section(raw, ["IMAGING STRATEGY"]),
-        "reporting": parse_section(raw, ["REPORTING"]),
-        "pearls": parse_section(raw, ["PEARLS"]),
-        "exam_traps": parse_section(raw, ["EXAM TRAPS"]),
-        "failure_mode": parse_section(raw, ["FAILURE MODE"]),
-        "rapid_recall": parse_section(raw, ["RAPID RECALL"]),
+        "bottom_line":      parse_section(raw, ["BOTTOM LINE"]),
+        "how_to_see_it":    parse_section(raw, ["HOW TO SEE IT"]),
+        "the_rules":        parse_section(raw, ["THE RULES"]),
+        "differentials":    parse_section(raw, ["DIFFERENTIALS"]),
+        "imaging":          parse_section(raw, ["IMAGING"]),
+        "report":           parse_section(raw, ["REPORT"]),
+        "dont_miss":        parse_section(raw, ["DON'T MISS", "DONT MISS"]),
+        "quick_hits":       parse_section(raw, ["QUICK HITS"]),
         "raw": raw,
         "saved": False,
         "id": None,
     }
 
-    # حفظ النتيجة لو مطلوب
     if req.save:
         pid = await database.execute(papers.insert().values(
             user_id=user["id"],
             input_mode=req.input_mode,
             title=req.input_text[:120],
-            summary=result["consultant_summary"],
-            findings=result["high_yield_rules"],
-            implications=result["failure_mode"],
+            summary=result["bottom_line"],
+            findings=result["the_rules"],
+            implications=result["dont_miss"],
             raw_response=raw,
         ))
         result["saved"] = True
         result["id"] = pid
 
     return result
-
 
 @app.get("/papers")
 async def list_papers(user=Depends(get_current_user), skip: int = 0, limit: int = 50):
