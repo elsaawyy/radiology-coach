@@ -195,7 +195,7 @@ async def call_openai(
     api_key: str,
     system: str,
     prompt: str,
-    max_tokens: int = 4000,  # Add this parameter
+    max_tokens: int = 6000,  # Add this parameter
     temperature: float = 0.3,
 ) -> str:
     """Proxy OpenAI call — user key used per-request, never persisted."""
@@ -349,7 +349,7 @@ RULES:
 
 OUTPUT: Return the COMPLETE report with original structure preserved, only IMPRESSION improved."""
     
-    raw = await call_openai(req.api_key, system, prompt, max_tokens=2500)
+    raw = await call_openai(req.api_key, system, prompt, max_tokens=6000)
     
     if req.mode == "a":
         result = {
@@ -427,56 +427,106 @@ async def delete_report(report_id: int, user=Depends(get_current_user)):
 # ─── PAPER DIGEST ────────────────────────────────────────────────────────────
 @app.post("/papers/digest")
 async def generate_digest(req: DigestRequest, user=Depends(get_current_user)):
-    system = """You are a US-trained senior radiology attending at final readout level.
+    system = """You are a US-trained senior radiology attending at final readout level, writing for a radiology fellow preparing for boards and clinical practice.
 
-MISSION: Convert any radiology paper/case into a surgically actionable digest.
+MISSION: Produce the most detailed, clinically dense, surgically actionable digest possible.
 
-ABSOLUTE RULES:
-- Every number → must have a threshold AND a surgical implication
-- Every verb → must be a surgical action (repair, reconstruct, augment, debride...)
+NON-NEGOTIABLE RULES:
+- Every number → threshold + surgical implication (no orphan numbers)
+- Every verb → surgical action (repair, reconstruct, augment, debride, fuse, resect...)
+- Every bullet → minimum 1 full sentence, not a fragment
 - 🔑 = single most decision-driving fact per section
-- 🟢 = most likely diagnosis, ⚪ = alternative, 🔴 = critical miss
-- Be brutally concise. No filler. No passive voice.
-- The DIFFERENTIALS section must always be a markdown table with columns: Diagnosis | Key Discriminator | Next Step
-- The REPORT section must have two sub-headers: FINDINGS: and IMPRESSION:
+- 🟢 = most likely, ⚪ = alternative, 🔴 = critical miss / cannot miss diagnosis
+- NEVER use vague language: no "may suggest", "can indicate", "possible" — use exact thresholds
+- If source text is sparse, extrapolate from established radiology/surgical literature
+- Aim for MAXIMUM clinical density. Longer is better. Do not summarize — TEACH.
+
+DEPTH MINIMUMS (strictly enforced):
+- HOW TO SEE IT: minimum 7 bullets
+- THE RULES: minimum 6 threshold → action → label lines
+- DIFFERENTIALS: minimum 6 rows (1x 🟢, 4x ⚪, 1x 🔴)
+- IMAGING: minimum 5 bullets (one per modality/sequence)
+- DON'T MISS: minimum 5 pitfalls
+- QUICK HITS: minimum 8 facts
+- REPORT: FINDINGS must have ≥4 sentences with specific measurements; IMPRESSION must include surgical recommendation
 """
 
-    prompt = f"""Digest this radiology article/case:
+    prompt = f"""Digest this radiology article/case into a comprehensive teaching digest:
 
 {req.input_text}
 
-OUTPUT STRUCTURE — use EXACTLY these 8 sections, numbered and bolded:
+OUTPUT STRUCTURE — use EXACTLY these 8 sections, numbered and bolded. Follow every instruction per section precisely.
+
+---
 
 1. **BOTTOM LINE**
-   One sentence: [key finding] → [surgical decision]. Include measurement threshold.
+Write 2–3 sentences maximum. Format:
+- Sentence 1: [Key pathology] with [specific measurement] → [surgical decision].
+- Sentence 2: [Most important threshold] that changes management.
+- Sentence 3 (optional): [Most common clinical pitfall].
+
+---
 
 2. **HOW TO SEE IT**
-   Bullet list of imaging signs. Each bullet = one actionable observation. Include 🔑 on the most critical sign.
+Minimum 7 bullets. Each bullet MUST follow this format:
+- [Sign name]: [how to identify it on imaging] → [surgical or clinical implication]
+Mark 🔑 on the single most decision-driving sign.
+Include: morphology, measurement technique, location, tissue quality signs, secondary signs, acuity markers, chronicity markers.
+
+---
 
 3. **THE RULES**
-   Bullet list of decision thresholds. Format: [threshold] → [surgical action] → [label]. Include 🔑 on the most important rule.
+Minimum 6 lines. Each line MUST follow EXACTLY this format:
+- [Measurement/finding] [threshold] → [surgical action] → [outcome/label]
+Cover the full spectrum from mild to severe. Mark 🔑 on the rule that most commonly changes surgical approach.
+Example format: Gap <2 cm → primary end-to-end repair → standard approach 🔑
+
+---
 
 4. **DIFFERENTIALS**
-   Markdown table: | Diagnosis | Key Discriminator | Next Step |
-   Use 🟢 for most likely, ⚪ for alternatives, 🔴 for critical miss.
+Markdown table with EXACTLY these columns: | Diagnosis | Key Discriminator | Next Step |
+Minimum 6 rows. Use 🟢 for most likely (1 row), ⚪ for alternatives (4+ rows), 🔴 for critical miss (1 row).
+Each discriminator must be a SPECIFIC imaging finding, not a generic description.
+Each next step must be a SURGICAL or MANAGEMENT action.
+
+---
 
 5. **IMAGING**
-   Bullet list. Format: [modality] → [what it shows] → [surgical implication]
+Minimum 5 bullets. Each bullet MUST follow this format:
+- [Modality/Sequence] → [specific finding it shows] → [surgical implication]
+Cover: MRI sequences (T1, T2, T2 FS, STIR, contrast), ultrasound, CT, X-ray if relevant.
+Include what each sequence adds that others cannot.
+
+---
 
 6. **REPORT**
-   Write a complete ready-to-paste radiology report with:
-   FINDINGS: (2–4 sentences, specific measurements)
-   IMPRESSION: (1–2 sentences with surgical recommendation)
+Write a complete, ready-to-paste attending-level radiology report.
+
+FINDINGS:
+Write 4–6 sentences. Include: location (precise anatomy), size/gap measurement, tissue quality, secondary signs, comparison if relevant.
+
+IMPRESSION:
+Write 2–3 sentences. State diagnosis, severity grade, and direct surgical recommendation.
+
+---
 
 7. **DON'T MISS**
-   Bullet list of critical errors radiologists make. Each = one pitfall → one consequence.
+Minimum 5 bullets. Each bullet MUST follow this format:
+- [Specific error] → [consequence] → [how to avoid it]
+Focus on errors that lead to wrong surgery, delayed treatment, or patient harm.
+
+---
 
 8. **QUICK HITS**
-   Bullet list of rapid recall facts. Short. Dense. Memorable.
+Minimum 8 bullets. Short, dense, board-style facts.
+Each bullet = one memorable fact with a number or threshold.
+Format: plain bullets, no sub-structure needed.
 
-Produce output exactly as specified. Use numbers, surgical verbs, measurement thresholds, emojis."""
+---
 
-    raw = await call_openai(req.api_key, system, prompt, max_tokens=3500)
+Produce the full digest now. Do not skip sections. Do not truncate. Be exhaustive."""
+
+    raw = await call_openai(req.api_key, system, prompt, max_tokens=6000)
 
     def parse_section(text, headers):
         for header in headers:
@@ -487,14 +537,14 @@ Produce output exactly as specified. Use numbers, surgical verbs, measurement th
         return None
 
     result = {
-        "bottom_line":      parse_section(raw, ["BOTTOM LINE"]),
-        "how_to_see_it":    parse_section(raw, ["HOW TO SEE IT"]),
-        "the_rules":        parse_section(raw, ["THE RULES"]),
-        "differentials":    parse_section(raw, ["DIFFERENTIALS"]),
-        "imaging":          parse_section(raw, ["IMAGING"]),
-        "report":           parse_section(raw, ["REPORT"]),
-        "dont_miss":        parse_section(raw, ["DON'T MISS", "DONT MISS"]),
-        "quick_hits":       parse_section(raw, ["QUICK HITS"]),
+        "bottom_line":   parse_section(raw, ["BOTTOM LINE"]),
+        "how_to_see_it": parse_section(raw, ["HOW TO SEE IT"]),
+        "the_rules":     parse_section(raw, ["THE RULES"]),
+        "differentials": parse_section(raw, ["DIFFERENTIALS"]),
+        "imaging":       parse_section(raw, ["IMAGING"]),
+        "report":        parse_section(raw, ["REPORT"]),
+        "dont_miss":     parse_section(raw, ["DON'T MISS", "DONT MISS"]),
+        "quick_hits":    parse_section(raw, ["QUICK HITS"]),
         "raw": raw,
         "saved": False,
         "id": None,
@@ -514,6 +564,7 @@ Produce output exactly as specified. Use numbers, surgical verbs, measurement th
         result["id"] = pid
 
     return result
+
 
 @app.get("/papers")
 async def list_papers(user=Depends(get_current_user), skip: int = 0, limit: int = 50):
