@@ -611,3 +611,46 @@ else:
     if os.path.exists("/app/frontend"):
         app.mount("/", StaticFiles(directory="/app/frontend", html=True), name="frontend")
         print("✅ Frontend mounted from /app/frontend")
+        
+        
+        
+        
+# ─── DEBUG ENDPOINT (remove after testing) ───────────────────────────────────
+@app.post("/debug/digest-raw")
+async def debug_digest_raw(req: DigestRequest, user=Depends(get_current_user)):
+    """Returns raw model output so we can see exactly what the model produces."""
+    
+    MAX_INPUT_CHARS = 6000
+    input_text = req.input_text
+    if len(input_text) > MAX_INPUT_CHARS:
+        input_text = input_text[:MAX_INPUT_CHARS] + "\n\n[Truncated]"
+
+    system = """You are a US-trained senior radiology attending at final readout level...
+    [your existing system prompt]
+    """
+
+    prompt = f"""Digest this radiology article/case:
+{input_text}
+[your existing prompt structure]
+"""
+
+    raw = await call_openai(req.api_key, system, prompt, max_tokens=4000)
+
+    # Count which sections were found
+    sections_found = []
+    sections_missing = []
+    for section in ["BOTTOM LINE", "HOW TO SEE IT", "THE RULES", "DIFFERENTIALS", 
+                    "IMAGING", "REPORT", "DON'T MISS", "QUICK HITS"]:
+        if section in raw.upper():
+            sections_found.append(section)
+        else:
+            sections_missing.append(section)
+
+    return {
+        "raw": raw,
+        "token_estimate": len(raw.split()),
+        "char_count": len(raw),
+        "sections_found": sections_found,
+        "sections_missing": sections_missing,
+        "model_cut_off": len(sections_missing) > 0,
+    }
