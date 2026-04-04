@@ -427,85 +427,68 @@ async def delete_report(report_id: int, user=Depends(get_current_user)):
 # ─── PAPER DIGEST ────────────────────────────────────────────────────────────
 @app.post("/papers/digest")
 async def generate_digest(req: DigestRequest, user=Depends(get_current_user)):
-    system = "You are a senior radiology attending. Create surgical teaching digests."
+    system = """You are a US-trained senior radiology attending teaching a fellow at final readout level.
 
-    prompt = f"""Create a surgical teaching digest for: {req.input_text}
+Your task: Extract surgically actionable data from the provided radiology paper or case.
 
-Use EXACTLY these 11 headers. Be specific with numbers and thresholds.
+CRITICAL RULES:
+- EVERY NUMBER must have a threshold and an implication
+- EVERY VERB must be a surgical action
+- Use 🔑 for most important decision-driving fact per section
+- Use 🟢 for most likely diagnosis, 🔴 for critical miss
+"""
+
+    prompt = f"""Here is the article/topic to summarize:
+
+{req.input_text}
+
+OUTPUT STRUCTURE - Use these EXACT 11 sections:
 
 1. CONSULTANT SUMMARY
-[One sentence with key surgical decision]
-
 2. CORE FRAMEWORK
-[Step-by-step decision points]
-
 3. HIGH-YIELD RULES
-[Bullet points with thresholds]
-
 4. NORMAL VS ABNORMAL
-[Key distinctions]
-
 5. DIFFERENTIALS
-[Table format]
-
 6. IMAGING STRATEGY
-[What answers which question]
-
 7. REPORTING
-[Example impression]
-
 8. PEARLS
-[Key surgical pearls]
-
 9. EXAM TRAPS
-[Pitfalls to avoid]
-
 10. FAILURE MODE
-[Surgical consequences]
-
 11. RAPID RECALL
-[Key anchors]
 
-Now produce the digest:"""
-    
-    raw = await call_openai(req.api_key, system, prompt, max_tokens=2500)
-    
-    # Simple parsing
-    def extract_section(text, header):
-        pattern = rf'{header}[:\s]*\n?([\s\S]*?)(?=\n\d+\.|\n[A-Z]|\Z)'
-        match = re.search(pattern, text, re.IGNORECASE)
-        return match.group(1).strip()[:500] if match else "No specific data in source"
+Produce the digest exactly using numbers, surgical actions, thresholds, and emojis for differentials (🟢⚪🔴)."""
 
-    def assign_emoji(line):
-        l = line.lower()
-        if "complete" in l:
-            return f"🟢 {line}"
-        elif "partial" in l or "tendinopathy" in l or "plantaris" in l or "gastrocnemius" in l:
-            return f"⚪ {line}"
-        else:
-            return f"🔴 {line}" 
-    
-    differentials_raw = extract_section(raw, "5. DIFFERENTIALS")
-    differentials_lines = [line.strip() for line in differentials_raw.split('\n') if line.strip()]
-    differentials_with_emoji = "\n".join([assign_emoji(l) for l in differentials_lines])
-    
+    raw = await call_openai(req.api_key, system, prompt, max_tokens=3500)
+
+    # Function to parse a section fully
+    def parse_section(text, headers):
+        for header in headers:
+            pattern = rf'{header}[:\s]*\n?([\s\S]*?)(?=\n\d+\.|\n[A-Z]|\Z)'
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                return match.group(1).strip()
+        return None
+
+    # استخراج كل الأقسام
     result = {
-        "consultant_summary": extract_section(raw, "1. CONSULTANT SUMMARY"),
-        "core_framework": extract_section(raw, "2. CORE FRAMEWORK"),
-        "high_yield_rules": extract_section(raw, "3. HIGH-YIELD RULES"),
-        "normal_vs_abnormal": extract_section(raw, "4. NORMAL VS ABNORMAL"),
-        "differentials": differentials_with_emoji,
-        "imaging_strategy": extract_section(raw, "6. IMAGING STRATEGY"),
-        "reporting": extract_section(raw, "7. REPORTING"),
-        "pearls": extract_section(raw, "8. PEARLS"),
-        "exam_traps": extract_section(raw, "9. EXAM TRAPS"),
-        "failure_mode": extract_section(raw, "10. FAILURE MODE"),
-        "rapid_recall": extract_section(raw, "11. RAPID RECALL"),
+        "consultant_summary": parse_section(raw, ["CONSULTANT SUMMARY"]) or raw[:500],
+        "core_framework": parse_section(raw, ["CORE FRAMEWORK"]),
+        "high_yield_rules": parse_section(raw, ["HIGH-YIELD RULES"]),
+        "normal_vs_abnormal": parse_section(raw, ["NORMAL VS ABNORMAL"]),
+        # DIFFERENTIALS: ناخد الجدول بالكامل كما جاء من AI
+        "differentials": parse_section(raw, ["DIFFERENTIALS"]),
+        "imaging_strategy": parse_section(raw, ["IMAGING STRATEGY"]),
+        "reporting": parse_section(raw, ["REPORTING"]),
+        "pearls": parse_section(raw, ["PEARLS"]),
+        "exam_traps": parse_section(raw, ["EXAM TRAPS"]),
+        "failure_mode": parse_section(raw, ["FAILURE MODE"]),
+        "rapid_recall": parse_section(raw, ["RAPID RECALL"]),
         "raw": raw,
         "saved": False,
         "id": None,
     }
-    
+
+    # حفظ النتيجة لو مطلوب
     if req.save:
         pid = await database.execute(papers.insert().values(
             user_id=user["id"],
@@ -518,9 +501,8 @@ Now produce the digest:"""
         ))
         result["saved"] = True
         result["id"] = pid
-    
-    return result
 
+    return result
 
 
 @app.get("/papers")
