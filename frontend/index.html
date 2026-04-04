@@ -816,45 +816,30 @@ async function generateDigest() {
             api_key: key,
             save: document.getElementById('d-save').checked,
         });
-        
-        // Build formatted HTML from parsed sections
-        let formattedHtml = '';
-        
-        if (data.consultant_summary) {
-            formattedHtml += `<div class="digest-section"><div class="section-title">1. CONSULTANT SUMMARY</div><div class="section-content">${escapeHtml(data.consultant_summary)}</div></div>`;
-        }
-        if (data.core_framework) {
-            formattedHtml += `<div class="digest-section"><div class="section-title">2. CORE FRAMEWORK</div><div class="section-content">${escapeHtml(data.core_framework)}</div></div>`;
-        }
-        if (data.high_yield_rules) {
-            formattedHtml += `<div class="digest-section"><div class="section-title">3. HIGH-YIELD RULES</div><div class="section-content">${escapeHtml(data.high_yield_rules)}</div></div>`;
-        }
-        if (data.normal_vs_abnormal) {
-            formattedHtml += `<div class="digest-section"><div class="section-title">4. NORMAL VS ABNORMAL</div><div class="section-content">${escapeHtml(data.normal_vs_abnormal)}</div></div>`;
-        }
-        if (data.differentials) {
-            formattedHtml += `<div class="digest-section"><div class="section-title">5. DIFFERENTIALS</div><div class="section-content">${escapeHtml(data.differentials)}</div></div>`;
-        }
-        if (data.imaging_strategy) {
-            formattedHtml += `<div class="digest-section"><div class="section-title">6. IMAGING STRATEGY</div><div class="section-content">${escapeHtml(data.imaging_strategy)}</div></div>`;
-        }
-        if (data.reporting) {
-            formattedHtml += `<div class="digest-section"><div class="section-title">7. REPORTING (ATTENDING LEVEL)</div><div class="section-content">${escapeHtml(data.reporting)}</div></div>`;
-        }
-        if (data.pearls) {
-            formattedHtml += `<div class="digest-section"><div class="section-title">8. PEARLS</div><div class="section-content">${escapeHtml(data.pearls)}</div></div>`;
-        }
-        if (data.exam_traps) {
-            formattedHtml += `<div class="digest-section"><div class="section-title">9. EXAM TRAPS</div><div class="section-content">${escapeHtml(data.exam_traps)}</div></div>`;
-        }
-        if (data.failure_mode) {
-            formattedHtml += `<div class="digest-section"><div class="section-title">10. FAILURE MODE</div><div class="section-content">${escapeHtml(data.failure_mode)}</div></div>`;
-        }
-        if (data.rapid_recall) {
-            formattedHtml += `<div class="digest-section"><div class="section-title">11. RAPID RECALL</div><div class="section-content">${escapeHtml(data.rapid_recall)}</div></div>`;
-        }
-        
-        document.getElementById('d-res-sum').innerHTML = formattedHtml;
+
+        // Map all 8 sections with labels
+        const sections = [
+            { key: 'bottom_line',   label: '⚡ Bottom Line',     color: 'var(--accent)'  },
+            { key: 'how_to_see_it', label: '🔍 How To See It',   color: 'var(--green)'   },
+            { key: 'the_rules',     label: '📏 The Rules',       color: 'var(--amber)'   },
+            { key: 'differentials', label: '🔀 Differentials',   color: 'var(--violet)'  },
+            { key: 'imaging',       label: '🖥️ Imaging',         color: 'var(--accent)'  },
+            { key: 'report',        label: '📋 Report',          color: 'var(--green)'   },
+            { key: 'dont_miss',     label: '🔴 Don\'t Miss',     color: 'var(--red)'     },
+            { key: 'quick_hits',    label: '⚡ Quick Hits',      color: 'var(--amber)'   },
+        ];
+
+        const container = document.getElementById('d-sections-container');
+        container.innerHTML = sections.map((s, i) => {
+            const content = data[s.key] || '—';
+            return `
+                ${i > 0 ? '<div class="divider"></div>' : ''}
+                <div class="result-section">
+                    <div class="result-tag" style="color:${s.color}">${s.label}</div>
+                    <div class="result-body mono">${esc(content)}</div>
+                </div>`;
+        }).join('');
+
         document.getElementById('d-result').classList.add('show');
         recentDigest = data;
         
