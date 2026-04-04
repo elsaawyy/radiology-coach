@@ -427,67 +427,58 @@ async def delete_report(report_id: int, user=Depends(get_current_user)):
 # ─── PAPER DIGEST ────────────────────────────────────────────────────────────
 @app.post("/papers/digest")
 async def generate_digest(req: DigestRequest, user=Depends(get_current_user)):
-    system = """You are a senior radiology attending. Extract surgical decision data from radiology papers.
+    system = """You are a data extraction engine. Extract SPECIFIC numbers, measurements, and surgical thresholds from the source text.
 
-RULES:
-- EVERY number must have a threshold and action (e.g., "gap <2cm → primary repair")
-- EVERY verb must be surgical (repair, graft, debride, reconstruct)
-- NO generic phrases ("further imaging", "clinical correlation", "consider")
-- Use 🔑 once for most critical rule
-- Use 🟢 for most likely, 🔴 for critical miss
-- Extract ALL differentials from source"""
+CRITICAL INSTRUCTIONS:
+- You MUST use ONLY information from the source text below
+- If the source does not contain a number, do NOT invent one
+- Extract VERBATIM surgical thresholds when present
+- DO NOT use generic templates
+- EVERY rule must reference a SPECIFIC number from the source"""
 
-    prompt = f"""SOURCE:
+    prompt = f"""SOURCE TEXT (extract data ONLY from this text):
 {req.input_text}
 
-OUTPUT EXACTLY these 11 sections. Use the FORMAT shown.
+Now extract the following 11 sections. If the source does not contain information for a section, write "Not specified in source".
 
 1. CONSULTANT SUMMARY
-[2 sentences. Must include a number that dictates management. Example: "Gap 2.5cm → needs graft (2-6cm range)"]
+[Extract: What is the single most important surgical decision-driving fact? Include SPECIFIC numbers from source.]
 
 2. CORE FRAMEWORK
-[Decision steps with thresholds. Each step: finding → measurement → action. Example: "Measure gap → <2cm repair; 2-6cm graft; >6cm reconstruction"]
+[Extract: The decision-making steps mentioned in the source. Use the EXACT thresholds from source.]
 
 3. HIGH-YIELD RULES
-[Bullets. Format: finding + threshold + action. Example: "🔑 Gap <2cm + good tissue → primary repair"]
+[Extract: Specific rules with numbers from source. Format: finding → threshold → action]
 
 4. NORMAL VS ABNORMAL
-[Only surgical differences. Example: "Acute (edema) → repairable | Chronic (fibrosis) → reconstruction"]
+[Extract: How the source distinguishes acute vs chronic, or normal vs abnormal surgically]
 
 5. DIFFERENTIALS
-[Table. Include ALL from source. Example:
-| Diagnosis | Key Discriminator | Surgical Action |
-|-----------|-------------------|-----------------|
-| 🟢 Complete tear | Gap 2.5cm | FHL graft |
-| ⚪️ Partial tear | Gap <2cm | Primary repair |
-| 🔴 Chronic tear | Gap >6cm | Reconstruction]
+[Extract: EVERY diagnosis mentioned in the source. Create table from source content.]
 
 6. IMAGING STRATEGY
-[Modality → what it answers → stop point. Example: "MRI → measure gap & tissue quality → stop if surgery indicated"]
+[Extract: What imaging findings answer which surgical questions, per source]
 
 7. REPORTING
-[1 sentence: Diagnosis + surgical action. Example: "Complete rupture with 2.5cm gap → FHL tendon graft"]
+[Extract: Example report impression from source or synthesize from source data]
 
 8. PEARLS
-[Missed finding → consequence. Example: "Underestimating effective gap → failed repair"]
+[Extract: Specific surgical pearls mentioned in source]
 
 9. EXAM TRAPS
-[Pitfall → why wrong → how to avoid. Example: "Calling chronic rupture acute → wrong surgery → check tissue quality"]
+[Extract: Specific pitfalls mentioned in source]
 
 10. FAILURE MODE
-[1 sentence: surgical consequence. Example: "Failed graft → reoperation needed"]
+[Extract: What happens if findings are missed, per source]
 
 11. RAPID RECALL
-[5-7 surgical anchors. Example:
-- Gap <2cm + good tissue = primary repair
-- Gap 2-6cm = FHL graft
-- Gap >6cm = reconstruction]
+[Extract: Key surgical anchors from source]
 
-Now produce the 11 sections using the EXACT format above. Be SPECIFIC. Use NUMBERS from the source."""
+Now extract ONLY from the source text above. Do NOT use generic knowledge. If a number appears in source, use it. If not, say "Not specified"."""
     
-    raw = await call_openai(req.api_key, system, prompt, max_tokens=3000)
+    raw = await call_openai(req.api_key, system, prompt, max_tokens=4000)
     
-    # Parse sections with multiple patterns
+    # Parse sections (same as before)
     def parse_section(text, labels):
         for label in labels:
             patterns = [
@@ -498,7 +489,7 @@ Now produce the 11 sections using the EXACT format above. Be SPECIFIC. Use NUMBE
                 m = re.search(pattern, text, re.IGNORECASE)
                 if m:
                     return m.group(1).strip()
-        return ""
+        return "Not specified in source"
     
     result = {
         "consultant_summary": parse_section(raw, ["CONSULTANT SUMMARY", "1. CONSULTANT SUMMARY"]),
@@ -518,26 +509,11 @@ Now produce the 11 sections using the EXACT format above. Be SPECIFIC. Use NUMBE
     }
     
     if req.save:
-        # Combine all sections for storage
-        full_summary = "\n\n".join([
-            f"1. CONSULTANT SUMMARY\n{result['consultant_summary']}" if result['consultant_summary'] else "",
-            f"2. CORE FRAMEWORK\n{result['core_framework']}" if result['core_framework'] else "",
-            f"3. HIGH-YIELD RULES\n{result['high_yield_rules']}" if result['high_yield_rules'] else "",
-            f"4. NORMAL VS ABNORMAL\n{result['normal_vs_abnormal']}" if result['normal_vs_abnormal'] else "",
-            f"5. DIFFERENTIALS\n{result['differentials']}" if result['differentials'] else "",
-            f"6. IMAGING STRATEGY\n{result['imaging_strategy']}" if result['imaging_strategy'] else "",
-            f"7. REPORTING\n{result['reporting']}" if result['reporting'] else "",
-            f"8. PEARLS\n{result['pearls']}" if result['pearls'] else "",
-            f"9. EXAM TRAPS\n{result['exam_traps']}" if result['exam_traps'] else "",
-            f"10. FAILURE MODE\n{result['failure_mode']}" if result['failure_mode'] else "",
-            f"11. RAPID RECALL\n{result['rapid_recall']}" if result['rapid_recall'] else "",
-        ])
-        
         pid = await database.execute(papers.insert().values(
             user_id=user["id"],
             input_mode=req.input_mode,
             title=req.input_text[:120],
-            summary=full_summary[:500] if full_summary else "",
+            summary=result["consultant_summary"],
             findings=result["high_yield_rules"],
             implications=result["failure_mode"],
             raw_response=raw,
@@ -546,6 +522,7 @@ Now produce the 11 sections using the EXACT format above. Be SPECIFIC. Use NUMBE
         result["id"] = pid
     
     return result
+
 
 @app.get("/papers")
 async def list_papers(user=Depends(get_current_user), skip: int = 0, limit: int = 50):
