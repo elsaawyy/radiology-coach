@@ -967,40 +967,82 @@ async function deleteItem(id, type) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EXPORT FUNCTIONS
+function markdownToHtml(text) {
+    if (!text) return '';
+    let html = text;
+
+    // Tables: convert markdown table to HTML table
+    html = html.replace(/\|(.+)\|\n\|[-| :]+\|\n((?:\|.+\|\n?)*)/g, (match, header, rows) => {
+        const ths = header.split('|').filter(c => c.trim()).map(c => `<th>${c.trim()}</th>`).join('');
+        const trs = rows.trim().split('\n').map(row => {
+            const tds = row.split('|').filter(c => c.trim()).map(c => `<td>${c.trim()}</td>`).join('');
+            return `<tr>${tds}</tr>`;
+        }).join('');
+        return `<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;margin:12px 0;font-size:12px"><thead><tr style="background:#4d9fff;color:white">${ths}</tr></thead><tbody>${trs}</tbody></table>`;
+    });
+
+    // Bold: **text**
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+    // Section headers: lines starting with number. **TITLE**
+    html = html.replace(/^(\d+)\.\s*<strong>(.+?)<\/strong>/gm, 
+        '<h2 style="color:#4d9fff;border-left:4px solid #4d9fff;padding-left:12px;margin-top:24px;margin-bottom:8px">$1. $2</h2>');
+
+    // Bullet points: lines starting with - 
+    html = html.replace(/^- (.+)/gm, '<li style="margin:4px 0">$1</li>');
+    html = html.replace(/(<li[^>]*>.*<\/li>\n?)+/g, '<ul style="margin:8px 0 8px 20px">$&</ul>');
+
+    // Line breaks
+    html = html.replace(/\n\n/g, '</p><p style="margin:8px 0">');
+    html = html.replace(/\n/g, '<br>');
+
+    return html;
+}
+
 function exportToWord(item, type) {
     const title = item.title || (type === 'report' ? 'Radiology Report' : 'Paper Digest');
     const date = new Date().toLocaleString();
+
     let content = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>${escapeHtml(title)}</title>
 <style>
-body { font-family: 'Calibri', Arial, sans-serif; margin: 2.54cm; line-height: 1.5; }
-h1 { color: #2c3e50; border-bottom: 3px solid #4d9fff; text-align: center; }
-.date { color: #7f8c8d; text-align: center; margin-bottom: 30px; }
-.section-title { font-weight: bold; color: #4d9fff; margin-top: 20px; border-left: 3px solid #4d9fff; padding-left: 12px; }
-.content { margin-bottom: 20px; white-space: pre-wrap; }
-.footer { margin-top: 40px; border-top: 1px solid #ddd; text-align: center; font-size: 9pt; color: #95a5a6; }
+body { font-family: Calibri, Arial, sans-serif; margin: 2.54cm; line-height: 1.6; color: #1a1a1a; }
+h1 { color: #2c3e50; border-bottom: 3px solid #4d9fff; text-align: center; padding-bottom: 10px; }
+h2 { color: #4d9fff; border-left: 4px solid #4d9fff; padding-left: 12px; margin-top: 24px; }
+.date { color: #7f8c8d; text-align: center; margin-bottom: 30px; font-size: 11pt; }
+.section-title { font-weight: bold; color: #4d9fff; margin-top: 20px; border-left: 3px solid #4d9fff; padding-left: 12px; font-size: 13pt; }
+p { margin: 8px 0; }
+ul { margin: 8px 0 8px 20px; }
+li { margin: 4px 0; }
+table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 11pt; }
+th { background: #4d9fff; color: white; padding: 8px; border: 1px solid #ccc; text-align: left; }
+td { padding: 7px; border: 1px solid #ccc; vertical-align: top; }
+tr:nth-child(even) td { background: #f5f8ff; }
+.footer { margin-top: 40px; border-top: 1px solid #ddd; text-align: center; font-size: 9pt; color: #95a5a6; padding-top: 10px; }
 </style>
 </head>
 <body>
-    <h1>${escapeHtml(title)}</h1>
-    <div class="date">Generated: ${escapeHtml(date)} | Radiology Assistant</div>`;
+<h1>${escapeHtml(title)}</h1>
+<div class="date">Generated: ${date} | Radiology Assistant</div>`;
+
     if (type === 'report') {
         content += `
-    <div class="section-title">✦ Polished Impression</div>
-    <div class="content">${escapeHtml(item.impression || '—')}</div>
-    <div class="section-title">◈ Top 3 Differentials</div>
-    <div class="content">${escapeHtml((item.differentials || '—').replace(/\n/g, '<br>'))}</div>
-    <div class="section-title">◎ Feedback & Rationale</div>
-    <div class="content">${escapeHtml(item.feedback || '—')}</div>
-    <div class="section-title">📋 Metadata</div>
-    <div class="content">Subspecialty: ${escapeHtml(item.subspecialty || 'General')}<br>Modality: ${escapeHtml(item.modality || 'Any')}</div>`;
+<div class="section-title">✦ Polished Impression</div>
+<div>${markdownToHtml(item.impression || '—')}</div>
+<div class="section-title">◈ Top 3 Differentials</div>
+<div>${markdownToHtml(item.differentials || '—')}</div>
+<div class="section-title">◎ Feedback & Rationale</div>
+<div>${markdownToHtml(item.feedback || '—')}</div>
+<div class="section-title">📋 Metadata</div>
+<div>Subspecialty: ${escapeHtml(item.subspecialty || 'General')}<br>Modality: ${escapeHtml(item.modality || 'Any')}</div>`;
     } else {
         const fullContent = item.raw || item.raw_response || item.summary || '';
-        content += `
-    <div class="section-title">✦ Complete Teaching Digest (11 Sections)</div>
-    <div class="content">${escapeHtml(fullContent)}</div>`;
+        content += `<div>${markdownToHtml(fullContent)}</div>`;
     }
-    content += `<div class="footer">Generated by Radiology Assistant — AI-Powered Radiology Training Workspace</div></body></html>`;
+
+    content += `<div class="footer">Generated by Radiology Assistant — AI-Powered Radiology Training Workspace</div>
+</body></html>`;
+
     const blob = new Blob([content], { type: 'application/msword' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -1008,6 +1050,7 @@ h1 { color: #2c3e50; border-bottom: 3px solid #4d9fff; text-align: center; }
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
     toast(`Exported "${title}" ✓`, 'ok');
 }
+
 
 function exportLib() {
     const blob = new Blob([JSON.stringify({ reports: libData.reports, papers: libData.papers }, null, 2)], { type: 'application/json' });
