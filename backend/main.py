@@ -475,13 +475,26 @@ Now produce the digest:"""
         pattern = rf'{header}[:\s]*\n?([\s\S]*?)(?=\n\d+\.|\n[A-Z]|\Z)'
         match = re.search(pattern, text, re.IGNORECASE)
         return match.group(1).strip()[:500] if match else "No specific data in source"
+
+    def assign_emoji(line):
+        l = line.lower()
+        if "complete" in l:
+            return f"🟢 {line}"
+        elif "partial" in l or "tendinopathy" in l or "plantaris" in l or "gastrocnemius" in l:
+            return f"⚪ {line}"
+        else:
+            return f"🔴 {line}" 
+    
+    differentials_raw = extract_section(raw, "5. DIFFERENTIALS")
+    differentials_lines = [line.strip() for line in differentials_raw.split('\n') if line.strip()]
+    differentials_with_emoji = "\n".join([assign_emoji(l) for l in differentials_lines])
     
     result = {
         "consultant_summary": extract_section(raw, "1. CONSULTANT SUMMARY"),
         "core_framework": extract_section(raw, "2. CORE FRAMEWORK"),
         "high_yield_rules": extract_section(raw, "3. HIGH-YIELD RULES"),
         "normal_vs_abnormal": extract_section(raw, "4. NORMAL VS ABNORMAL"),
-        "differentials": extract_section(raw, "5. DIFFERENTIALS"),
+        "differentials": differentials_with_emoji,
         "imaging_strategy": extract_section(raw, "6. IMAGING STRATEGY"),
         "reporting": extract_section(raw, "7. REPORTING"),
         "pearls": extract_section(raw, "8. PEARLS"),
