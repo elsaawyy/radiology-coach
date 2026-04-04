@@ -244,10 +244,9 @@ def parse_section(text: str, labels: list) -> str:
 # ─── REPORT COACH ────────────────────────────────────────────────────────────
 @app.post("/reports/polish")
 async def polish_report(req: PolishRequest, user=Depends(get_current_user)):
-    system = """You are an elite, U.S.-trained senior radiologist with subspecialty expertise. You produce detailed, evidence-based reports with clinical reasoning."""
+    system = """You are an elite, U.S.-trained senior radiologist with subspecialty expertise. You produce final-signature quality reports with structured, actionable impressions."""
 
     if req.mode == "a":
-        # ========== MODE A - Impression Only ==========
         prompt = f"""You are a senior radiologist polishing a radiology report. PRESERVE THE ORIGINAL STRUCTURE EXACTLY.
 
 ORIGINAL REPORT:
@@ -260,33 +259,33 @@ RULES:
    - Findings (ALL details must remain unchanged)
    - Any other sections
 
-2. ONLY rewrite the IMPRESSION section.
+2. ONLY rewrite the IMPRESSION section following the structure below.
 
-3. The IMPRESSION must follow this structure EXACTLY:
+3. IMPRESSION STRUCTURE (use these EXACT sections):
 
-   A. First paragraph (Narrative Impression):
-   - Write a smooth, professional paragraph (NOT bullets)
-   - Integrate clinical context (e.g., cirrhosis, hepatitis)
-   - Combine all lesions into a flowing sentence
-   - Include:
-     • lesion size + location
-     • arterial enhancement, washout, capsule (if present)
-     • LI-RADS category
-     • clear diagnosis when appropriate (e.g., HCC)
-   - End with a brief statement about background liver and absence/presence of complications
+**IMPRESSION**
+State the most likely diagnosis first (no hedging if clear). Use structured reasoning where appropriate:
+- "Constellation of findings consistent with ..."
+- "Favor ... over ... given ..."
+- "Sequela of ..."
+Be clinically actionable. Do NOT restate findings. Recommend next imaging only if necessary (specific modality/protocol).
 
-   B. Differential Diagnosis (numbered list):
-   - 2–3 items maximum
-   - Use confident clinical language:
-     • "— favored"
-     • "— less likely"
-   - Must be clinically relevant (e.g., HCC, iCCA, dysplastic nodule)
+**DIFFERENTIAL DIAGNOSIS** (only if needed):
+List 2–4 prioritized entities.
 
-   C. Clinical Rationale (short paragraph):
-   - Explain WHY the classification (LI-RADS) was assigned
-   - Reference major features (APHE, washout, capsule, size)
-   - Keep concise but clinically meaningful
-   - No long textbook explanations
+**REPORTING PITFALLS**:
+List 2–4 commonly missed or high-risk considerations.
+
+**TEACHING PEARL**:
+1–2 lines max; focus on key discriminator or management insight.
+
+**LANGUAGE UPGRADE AUDIT**:
+Convert weak phrases → strong phrasing (3–6 examples).
+Focus on removing hedging, vagueness, redundancy.
+
+**SCORING SYSTEM**:
+Include validated imaging scoring system if applicable.
+If not applicable, explicitly state: "No validated scoring system applies."
 
 4. Tone:
 - Senior radiologist level
@@ -297,13 +296,44 @@ RULES:
 - "could represent"
 - "possibly"
 - "cannot rule out"
+- "clinical correlation recommended"
+- "suggesting"
+- "may represent"
 
 OUTPUT:
-Return ONLY the IMPRESSION section. Do NOT include Patient Information, Imaging Study, or Findings.
-The output should start with "IMPRESSION:" followed by the three parts (A, B, C)."""
+Return the FULL report with original structure preserved.
+ONLY the IMPRESSION section should be rewritten in the required format.
+
+EXAMPLE OF CORRECT IMPRESSION SECTION:
+
+**IMPRESSION**
+Constellation of findings consistent with hepatocellular carcinoma (HCC), LI-RADS 5, given arterial hyperenhancement, washout, and capsule in a cirrhotic liver. Lesion 2 is indeterminate, LI-RADS 3. No tumor in vein.
+
+**DIFFERENTIAL DIAGNOSIS**
+1. HCC — favored
+2. Intrahepatic cholangiocarcinoma — less likely (no targetoid features)
+3. Dysplastic nodule — less likely (no APHE)
+
+**REPORTING PITFALLS**
+1. Missing washout on portal venous phase → undercall HCC
+2. Overcalling capsule on delayed phase → false LR-5
+3. Ignoring ancillary features → wrong category
+
+**TEACHING PEARL**
+LI-RADS 5 requires nonrim APHE + washout or capsule; size <10mm cannot be LR-5.
+
+**LANGUAGE UPGRADE AUDIT**
+- "may represent" → "consistent with"
+- "could be" → "favors"
+- "suspicious for" → "diagnostic of"
+
+**SCORING SYSTEM**
+LI-RADS v2018 applied.
+
+Now produce the polished report with the IMPRESSION section in the required format."""
     
     else:
-        # ========== MODE B - Full Report ==========
+        # Mode B - Full Report (keep existing)
         prompt = f"""You are a senior radiologist polishing a full radiology report. PRESERVE THE ORIGINAL STRUCTURE EXACTLY.
 
 ORIGINAL REPORT:
@@ -314,29 +344,23 @@ RULES:
 2. ONLY improve the IMPRESSION section
 3. Format impression as numbered bullets (1., 2., 3.)
 4. Use proper confidence language
-5. PROHIBITED: "could represent", "possibly", "cannot rule out"
+5. PROHIBITED: "could represent", "possibly", "cannot rule out", "clinical correlation recommended"
 6. Add management implications when appropriate
 
-OUTPUT: Return the COMPLETE report with original structure preserved."""
+OUTPUT: Return the COMPLETE report with original structure preserved, only IMPRESSION improved."""
     
-    raw = await call_openai(req.api_key, system, prompt, max_tokens=2000)
+    raw = await call_openai(req.api_key, system, prompt, max_tokens=2500)
     
     if req.mode == "a":
-        # For Mode A, extract just the impression section
-        # The AI should already return only the impression, but let's clean it
-        impression_text = raw.strip()
-        # Remove any stray markdown formatting
-        impression_text = impression_text.replace('**', '')
         result = {
-            "impression": impression_text,
+            "impression": raw,
             "differentials": "",
             "feedback": "",
-            "raw": impression_text,
+            "raw": raw,
             "saved": False,
             "id": None,
         }
     else:
-        # For Mode B, return full report
         result = {
             "impression": raw,
             "differentials": "",
@@ -363,7 +387,6 @@ OUTPUT: Return the COMPLETE report with original structure preserved."""
         result["id"] = rid
     
     return result
-
 
 
 
@@ -404,109 +427,119 @@ async def delete_report(report_id: int, user=Depends(get_current_user)):
 # ─── PAPER DIGEST ────────────────────────────────────────────────────────────
 @app.post("/papers/digest")
 async def generate_digest(req: DigestRequest, user=Depends(get_current_user)):
-    system = """You are a US-trained senior radiology attending teaching a fellow at final readout level.
+    system = """You are a senior radiology attending. Extract surgical decision data from radiology papers.
 
-Your task: Extract surgically actionable data from the provided radiology paper or case.
+RULES:
+- EVERY number must have a threshold and action (e.g., "gap <2cm → primary repair")
+- EVERY verb must be surgical (repair, graft, debride, reconstruct)
+- NO generic phrases ("further imaging", "clinical correlation", "consider")
+- Use 🔑 once for most critical rule
+- Use 🟢 for most likely, 🔴 for critical miss
+- Extract ALL differentials from source"""
 
-CRITICAL RULES:
-- EVERY NUMBER must have a threshold and an implication (e.g., "gap <2cm → primary repair")
-- EVERY VERB must be a surgical action (repair, graft, debride, reconstruct, augment)
-- DO NOT use generic radiology language ("further imaging", "clinical correlation", "consider")
-- If a variable can change procedure type (repair vs graft vs non-op) → it MUST be included
-- DO NOT omit: gap size, effective gap, tissue quality, chronicity, location, instability, associated structures
-- Imaging patterns, distribution, enhancement, chronicity take priority over wording rules
-- Use 🔑 for the single most important decision-driving fact per section (max 1-2 per section)
-- Use 🟢 for most likely diagnosis (only one)
-- Use 🔴 for critical miss (must not overlook)"""
-
-    prompt = f"""Here is the article/topic to summarize:
-
+    prompt = f"""SOURCE:
 {req.input_text}
 
-OUTPUT STRUCTURE - Use these EXACT 11 sections:
+OUTPUT EXACTLY these 11 sections. Use the FORMAT shown.
 
 1. CONSULTANT SUMMARY
-2-3 sentences. Frame as management/decision problem. Must include a specific measurement or threshold that dictates management. Example: "Complete Achilles rupture with 1.5cm gap → primary repair (gap <2cm)."
+[2 sentences. Must include a number that dictates management. Example: "Gap 2.5cm → needs graft (2-6cm range)"]
 
 2. CORE FRAMEWORK
-Stepwise structure. Each step = decision checkpoint with specific threshold. Use "→" to show implication. Example:
-- Measure fluid-filled gap → <2cm primary repair; 2-6cm needs graft
-- Assess effective gap (degenerative ends) → alters surgical technique
-- Check location → mid-substance vs insertional vs myotendinous
+[Decision steps with thresholds. Each step: finding → measurement → action. Example: "Measure gap → <2cm repair; 2-6cm graft; >6cm reconstruction"]
 
 3. HIGH-YIELD RULES
-Bullet points. Format: finding + threshold + surgical action. Use 🔑 once. Example:
-- 🔑 Gap <2cm + good tissue quality → primary end-to-end repair
-- Gap 2-6cm → lengthening ± FHL tendon graft
-- Gap >6cm → complex reconstruction (turndown/transfer)
-- Severe tendinosis at stumps → increases effective gap → alters surgery
+[Bullets. Format: finding + threshold + action. Example: "🔑 Gap <2cm + good tissue → primary repair"]
 
 4. NORMAL VS ABNORMAL
-Only distinctions that change surgical management. Example:
-- Acute (fluid gap + edema) → repairable tissue
-- Chronic (fibrosis/fatty atrophy) → reconstruction, not simple repair
+[Only surgical differences. Example: "Acute (edema) → repairable | Chronic (fibrosis) → reconstruction"]
 
 5. DIFFERENTIALS
-Table with 3 columns. Use 🟢, ⚪️, 🔴. Include ALL differentials from source.
-| Diagnosis | Key Discriminator (with threshold) | Surgical Next Step |
-|-----------|-----------------------------------|---------------------|
-| 🟢 most likely | [specific finding + number] | [specific action] |
+[Table. Include ALL from source. Example:
+| Diagnosis | Key Discriminator | Surgical Action |
+|-----------|-------------------|-----------------|
+| 🟢 Complete tear | Gap 2.5cm | FHL graft |
+| ⚪️ Partial tear | Gap <2cm | Primary repair |
+| 🔴 Chronic tear | Gap >6cm | Reconstruction]
 
 6. IMAGING STRATEGY
-Modality → what it answers → when to stop. Example:
-MRI → measure gap, tissue quality, chronicity → stop if surgery indicated
+[Modality → what it answers → stop point. Example: "MRI → measure gap & tissue quality → stop if surgery indicated"]
 
-7. REPORTING (ATTENDING LEVEL)
-1-2 sentences. Must read like final report impression. Must include management implication. Example:
-"Complete Achilles rupture with 1.5cm gap and poor tissue quality → primary repair with possible augmentation"
+7. REPORTING
+[1 sentence: Diagnosis + surgical action. Example: "Complete rupture with 2.5cm gap → FHL tendon graft"]
 
 8. PEARLS
-Real-world surgical misses. Format: finding → consequence. Example:
-- Underestimating effective gap → failed primary repair
-- Missing chronic degeneration → wrong surgical technique
+[Missed finding → consequence. Example: "Underestimating effective gap → failed repair"]
 
 9. EXAM TRAPS
-Format strictly: pitfall → why wrong → how to avoid. Example:
-- Calling chronic rupture acute → wrong surgical approach → assess tissue quality and fibrosis
+[Pitfall → why wrong → how to avoid. Example: "Calling chronic rupture acute → wrong surgery → check tissue quality"]
 
 10. FAILURE MODE
-Direct outcome only. Focus on surgical consequence. Example:
-"Failed primary repair due to underestimated effective gap → reoperation needed"
+[1 sentence: surgical consequence. Example: "Failed graft → reoperation needed"]
 
 11. RAPID RECALL
-5-7 bullets. Ultra-compressed surgical anchors. Example:
+[5-7 surgical anchors. Example:
 - Gap <2cm + good tissue = primary repair
 - Gap 2-6cm = FHL graft
-- Gap >6cm = complex reconstruction
-- Acute = repairable
-- Chronic = reconstruction
-- Poor tissue quality = augmentation
+- Gap >6cm = reconstruction]
 
-Now produce the digest using the 11-section structure above. Use the EXACT format shown in the examples. EVERY number must have a threshold and surgical action."""
+Now produce the 11 sections using the EXACT format above. Be SPECIFIC. Use NUMBERS from the source."""
     
-    raw = await call_openai(req.api_key, system, prompt, max_tokens=3500)
-    print("\n=== RAW RESPONSE ===\n")
-    print(raw)
-    print("\n====================\n")
+    raw = await call_openai(req.api_key, system, prompt, max_tokens=3000)
     
-    # Parse sections
+    # Parse sections with multiple patterns
+    def parse_section(text, labels):
+        for label in labels:
+            patterns = [
+                rf'(?:^|\n)(?:\d+\.\s*|\#\#?\s*|\*\*){re.escape(label)}.*?\n([\s\S]*?)(?=\n(?:\d+\.\s*|\#\#?\s*|\*\*|$))',
+                rf'{re.escape(label)}[:\s]*([\s\S]*?)(?=\n\d+\.\s*|\n\#\#?\s*|\n\*\*|$)',
+            ]
+            for pattern in patterns:
+                m = re.search(pattern, text, re.IGNORECASE)
+                if m:
+                    return m.group(1).strip()
+        return ""
+    
     result = {
-        "summary": parse_section(raw, ["CONSULTANT SUMMARY"]) or raw[:500],
-        "findings": parse_section(raw, ["HIGH-YIELD RULES"]),
-        "implications": parse_section(raw, ["FAILURE MODE"]),
+        "consultant_summary": parse_section(raw, ["CONSULTANT SUMMARY", "1. CONSULTANT SUMMARY"]),
+        "core_framework": parse_section(raw, ["CORE FRAMEWORK", "2. CORE FRAMEWORK"]),
+        "high_yield_rules": parse_section(raw, ["HIGH-YIELD RULES", "3. HIGH-YIELD RULES"]),
+        "normal_vs_abnormal": parse_section(raw, ["NORMAL VS ABNORMAL", "4. NORMAL VS ABNORMAL"]),
+        "differentials": parse_section(raw, ["DIFFERENTIALS", "5. DIFFERENTIALS"]),
+        "imaging_strategy": parse_section(raw, ["IMAGING STRATEGY", "6. IMAGING STRATEGY"]),
+        "reporting": parse_section(raw, ["REPORTING (ATTENDING LEVEL)", "7. REPORTING", "REPORTING"]),
+        "pearls": parse_section(raw, ["PEARLS", "8. PEARLS"]),
+        "exam_traps": parse_section(raw, ["EXAM TRAPS", "9. EXAM TRAPS"]),
+        "failure_mode": parse_section(raw, ["FAILURE MODE", "10. FAILURE MODE"]),
+        "rapid_recall": parse_section(raw, ["RAPID RECALL", "11. RAPID RECALL"]),
         "raw": raw,
         "saved": False,
         "id": None,
     }
     
     if req.save:
+        # Combine all sections for storage
+        full_summary = "\n\n".join([
+            f"1. CONSULTANT SUMMARY\n{result['consultant_summary']}" if result['consultant_summary'] else "",
+            f"2. CORE FRAMEWORK\n{result['core_framework']}" if result['core_framework'] else "",
+            f"3. HIGH-YIELD RULES\n{result['high_yield_rules']}" if result['high_yield_rules'] else "",
+            f"4. NORMAL VS ABNORMAL\n{result['normal_vs_abnormal']}" if result['normal_vs_abnormal'] else "",
+            f"5. DIFFERENTIALS\n{result['differentials']}" if result['differentials'] else "",
+            f"6. IMAGING STRATEGY\n{result['imaging_strategy']}" if result['imaging_strategy'] else "",
+            f"7. REPORTING\n{result['reporting']}" if result['reporting'] else "",
+            f"8. PEARLS\n{result['pearls']}" if result['pearls'] else "",
+            f"9. EXAM TRAPS\n{result['exam_traps']}" if result['exam_traps'] else "",
+            f"10. FAILURE MODE\n{result['failure_mode']}" if result['failure_mode'] else "",
+            f"11. RAPID RECALL\n{result['rapid_recall']}" if result['rapid_recall'] else "",
+        ])
+        
         pid = await database.execute(papers.insert().values(
             user_id=user["id"],
             input_mode=req.input_mode,
             title=req.input_text[:120],
-            summary=result["summary"],
-            findings=result["findings"],
-            implications=result["implications"],
+            summary=full_summary[:500] if full_summary else "",
+            findings=result["high_yield_rules"],
+            implications=result["failure_mode"],
             raw_response=raw,
         ))
         result["saved"] = True
