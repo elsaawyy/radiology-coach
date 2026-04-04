@@ -247,7 +247,7 @@ async def polish_report(req: PolishRequest, user=Depends(get_current_user)):
     system = """You are an elite, U.S.-trained senior radiologist with subspecialty expertise. You produce detailed, evidence-based reports with clinical reasoning."""
 
     if req.mode == "a":
-        # ========== MODE A - Impression Only (with structured impression) ==========
+        # ========== MODE A - Impression Only ==========
         prompt = f"""You are a senior radiologist polishing a radiology report. PRESERVE THE ORIGINAL STRUCTURE EXACTLY.
 
 ORIGINAL REPORT:
@@ -299,9 +299,9 @@ RULES:
 - "cannot rule out"
 
 OUTPUT:
-Return the FULL report with original structure preserved.
-ONLY the IMPRESSION section should be rewritten in the required format."""
-
+Return ONLY the IMPRESSION section. Do NOT include Patient Information, Imaging Study, or Findings.
+The output should start with "IMPRESSION:" followed by the three parts (A, B, C)."""
+    
     else:
         # ========== MODE B - Full Report ==========
         prompt = f"""You are a senior radiologist polishing a full radiology report. PRESERVE THE ORIGINAL STRUCTURE EXACTLY.
@@ -313,31 +313,38 @@ RULES:
 1. Keep ALL sections exactly as written (Patient Information, Imaging Study, Findings)
 2. ONLY improve the IMPRESSION section
 3. Format impression as numbered bullets (1., 2., 3.)
-4. Use proper confidence language:
-   - "consistent with" → definitive
-   - "concerning for" → suspicious
-   - "favors X over Y" → differential
-5. PROHIBITED: "could represent", "possibly", "cannot rule out", "clinical correlation recommended"
+4. Use proper confidence language
+5. PROHIBITED: "could represent", "possibly", "cannot rule out"
 6. Add management implications when appropriate
 
-OUTPUT: Complete report with original structure preserved, only IMPRESSION improved.
-
-EXAMPLE OF CORRECT IMPRESSION FORMAT:
-IMPRESSION:
-1. Lesion 1 demonstrates arterial hyperenhancement, washout, and capsule appearance — consistent with LR-5 (definite HCC).
-2. Lesion 2 is small and indeterminate — LR-3 (intermediate probability), warranting surveillance at 6 months.
-3. Background liver shows cirrhotic changes, requiring continued surveillance."""
+OUTPUT: Return the COMPLETE report with original structure preserved."""
     
     raw = await call_openai(req.api_key, system, prompt, max_tokens=2000)
     
-    result = {
-        "impression": raw,
-        "differentials": "",
-        "feedback": "",
-        "raw": raw,
-        "saved": False,
-        "id": None,
-    }
+    if req.mode == "a":
+        # For Mode A, extract just the impression section
+        # The AI should already return only the impression, but let's clean it
+        impression_text = raw.strip()
+        # Remove any stray markdown formatting
+        impression_text = impression_text.replace('**', '')
+        result = {
+            "impression": impression_text,
+            "differentials": "",
+            "feedback": "",
+            "raw": impression_text,
+            "saved": False,
+            "id": None,
+        }
+    else:
+        # For Mode B, return full report
+        result = {
+            "impression": raw,
+            "differentials": "",
+            "feedback": "",
+            "raw": raw,
+            "saved": False,
+            "id": None,
+        }
     
     if req.save:
         rid = await database.execute(reports.insert().values(
@@ -346,7 +353,7 @@ IMPRESSION:
             modality=req.modality,
             mode="impression_only" if req.mode == "a" else "full_report",
             input_text=req.input_text,
-            impression=raw,
+            impression=result["impression"],
             differentials="",
             feedback="",
             raw_response=raw,
@@ -356,6 +363,10 @@ IMPRESSION:
         result["id"] = rid
     
     return result
+
+
+
+
 
 @app.get("/reports")
 async def list_reports(user=Depends(get_current_user), skip: int = 0, limit: int = 50):
@@ -395,104 +406,94 @@ async def delete_report(report_id: int, user=Depends(get_current_user)):
 async def generate_digest(req: DigestRequest, user=Depends(get_current_user)):
     system = """You are a US-trained senior radiology attending teaching a fellow at final readout level.
 
-Your task: Summarize the provided radiology paper or case into the exact 8-section structure below.
+Your task: Extract surgically actionable data from the provided radiology paper or case.
 
-RULES (MANDATORY)
-- No teaching language ("start with," "look for," "this suggests," "remember that")
-- No repetition across sections
-- No narrative or explanatory flow
-- Use diagnostic shorthand (+ → – ±) instead of prose where possible
-- Every line must change diagnosis, management, or surgical planning
-- If a line does not affect a decision → delete it
-- Use 🔑 only for the single most important decision-driving fact per section (max 1 per section)
+CRITICAL RULES:
+- EVERY NUMBER must have a threshold and an implication (e.g., "gap <2cm → primary repair")
+- EVERY VERB must be a surgical action (repair, graft, debride, reconstruct, augment)
+- DO NOT use generic radiology language ("further imaging", "clinical correlation", "consider")
+- If a variable can change procedure type (repair vs graft vs non-op) → it MUST be included
+- DO NOT omit: gap size, effective gap, tissue quality, chronicity, location, instability, associated structures
+- Imaging patterns, distribution, enhancement, chronicity take priority over wording rules
+- Use 🔑 for the single most important decision-driving fact per section (max 1-2 per section)
 - Use 🟢 for most likely diagnosis (only one)
-- Use 🔴 for critical miss (must not overlook)
+- Use 🔴 for critical miss (must not overlook)"""
 
-CRITICAL RETENTION RULE (MANDATORY)
-- Do NOT omit variables that alter surgical technique or approach
-- Must include: gap size, effective gap, tissue quality, chronicity, location, instability, associated structures
-- If a variable can change procedure type (repair vs graft vs non-op) → it MUST be included 🔑
-- If compression forces removal → remove background, NOT surgical variables
-
-ANTI-OMISSION GUARANTEE (MANDATORY)
-- Never delete or compress any imaging feature that changes diagnosis, staging, or management
-- If forced to shorten → rewrite, do NOT remove decision-relevant data
-- Imaging patterns, distribution, enhancement, chronicity, and structural relationships take priority over wording rules
-- Style rules must NEVER override clinical content preservation 🔑"""
-
-    prompt = f"""OUTPUT STRUCTURE (use these exact headers)
-
-Here is the article/topic to summarize:
+    prompt = f"""Here is the article/topic to summarize:
 
 {req.input_text}
 
-1. BOTTOM LINE
-One sentence. What to tell the surgeon. No explanation.
-If paper is weak → start with: Limited evidence.
+OUTPUT STRUCTURE - Use these EXACT 11 sections:
 
-2. HOW TO SEE IT
-3–5 search pattern steps. No complete sentences. Each step = decision checkpoint.
+1. CONSULTANT SUMMARY
+2-3 sentences. Frame as management/decision problem. Must include a specific measurement or threshold that dictates management. Example: "Complete Achilles rupture with 1.5cm gap → primary repair (gap <2cm)."
 
-3. THE RULES
-Bullet points. Each line: finding → threshold → implication. Include 🔑 once.
+2. CORE FRAMEWORK
+Stepwise structure. Each step = decision checkpoint with specific threshold. Use "→" to show implication. Example:
+- Measure fluid-filled gap → <2cm primary repair; 2-6cm needs graft
+- Assess effective gap (degenerative ends) → alters surgical technique
+- Check location → mid-substance vs insertional vs myotendinous
 
-4. DIFFERENTIALS
-Table with exactly 3 columns:
+3. HIGH-YIELD RULES
+Bullet points. Format: finding + threshold + surgical action. Use 🔑 once. Example:
+- 🔑 Gap <2cm + good tissue quality → primary end-to-end repair
+- Gap 2-6cm → lengthening ± FHL tendon graft
+- Gap >6cm → complex reconstruction (turndown/transfer)
+- Severe tendinosis at stumps → increases effective gap → alters surgery
 
-| Diagnosis | Key Discriminator | Next Step |
-|-----------|-------------------|------------|
-| 🟢 most likely | [discriminator] | [action] |
-| ⚪️ alternative | [discriminator] | [action] |
-| ⚪️ alternative | [discriminator] | [action] |
-| 🔴 critical miss | [discriminator] | [action] |
+4. NORMAL VS ABNORMAL
+Only distinctions that change surgical management. Example:
+- Acute (fluid gap + edema) → repairable tissue
+- Chronic (fibrosis/fatty atrophy) → reconstruction, not simple repair
 
-MANDATORY:
-- Include ALL differentials mentioned in the source (no limit)
-- Do NOT truncate for brevity
-- Preserve rare but management-relevant entities
+5. DIFFERENTIALS
+Table with 3 columns. Use 🟢, ⚪️, 🔴. Include ALL differentials from source.
+| Diagnosis | Key Discriminator (with threshold) | Surgical Next Step |
+|-----------|-----------------------------------|---------------------|
+| 🟢 most likely | [specific finding + number] | [specific action] |
 
-5. IMAGING
-Modality → what it answers → when to stop.
-No unnecessary alternatives.
+6. IMAGING STRATEGY
+Modality → what it answers → when to stop. Example:
+MRI → measure gap, tissue quality, chronicity → stop if surgery indicated
 
-6. REPORT
-FINDINGS: objective description only. No diagnosis.
-IMPRESSION: diagnosis + management implication (one sentence).
-Add (Abstract only) if applicable
+7. REPORTING (ATTENDING LEVEL)
+1-2 sentences. Must read like final report impression. Must include management implication. Example:
+"Complete Achilles rupture with 1.5cm gap and poor tissue quality → primary repair with possible augmentation"
 
-7. DON'T MISS
-Max 3 lines
-Format: missed entity → consequence
+8. PEARLS
+Real-world surgical misses. Format: finding → consequence. Example:
+- Underestimating effective gap → failed primary repair
+- Missing chronic degeneration → wrong surgical technique
 
-8. QUICK HITS
-Exam-level + real world anchors only
+9. EXAM TRAPS
+Format strictly: pitfall → why wrong → how to avoid. Example:
+- Calling chronic rupture acute → wrong surgical approach → assess tissue quality and fibrosis
 
-BEHAVIOR RULES
-- If input is only abstract → use abstract; add (Abstract only)
-- Do not praise the paper
-- Do not restate background unless it changes management
-- Do not add a conclusion section
+10. FAILURE MODE
+Direct outcome only. Focus on surgical consequence. Example:
+"Failed primary repair due to underestimated effective gap → reoperation needed"
 
-QUALITY CHECK (SELF-ENFORCED)
-- Rewrite (do NOT delete) any important sentence violating style rules
-- Delete only non-decision or background content
-- Delete any sentence starting with: "Consider," "Look for," "Assess" (rewrite if important)
-- Every number must include threshold + implication
-- FINDINGS → no diagnostic labels
-- IMPRESSION → exactly one diagnosis + one action
+11. RAPID RECALL
+5-7 bullets. Ultra-compressed surgical anchors. Example:
+- Gap <2cm + good tissue = primary repair
+- Gap 2-6cm = FHL graft
+- Gap >6cm = complex reconstruction
+- Acute = repairable
+- Chronic = reconstruction
+- Poor tissue quality = augmentation
 
-Now produce the digest using the 8-section structure above."""
+Now produce the digest using the 11-section structure above. Use the EXACT format shown in the examples. EVERY number must have a threshold and surgical action."""
     
-    raw = await call_openai(req.api_key, system, prompt, max_tokens=3000)
+    raw = await call_openai(req.api_key, system, prompt, max_tokens=3500)
     print("\n=== RAW RESPONSE ===\n")
     print(raw)
     print("\n====================\n")
     
     # Parse sections
     result = {
-        "summary": parse_section(raw, ["BOTTOM LINE"]) or raw[:500],
-        "findings": parse_section(raw, ["THE RULES"]),
-        "implications": parse_section(raw, ["DON'T MISS"]),
+        "summary": parse_section(raw, ["CONSULTANT SUMMARY"]) or raw[:500],
+        "findings": parse_section(raw, ["HIGH-YIELD RULES"]),
+        "implications": parse_section(raw, ["FAILURE MODE"]),
         "raw": raw,
         "saved": False,
         "id": None,
@@ -512,6 +513,7 @@ Now produce the digest using the 8-section structure above."""
         result["id"] = pid
     
     return result
+
 @app.get("/papers")
 async def list_papers(user=Depends(get_current_user), skip: int = 0, limit: int = 50):
     q = papers.select().where(papers.c.user_id == user["id"])\
