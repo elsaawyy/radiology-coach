@@ -427,82 +427,67 @@ async def delete_report(report_id: int, user=Depends(get_current_user)):
 # ─── PAPER DIGEST ────────────────────────────────────────────────────────────
 @app.post("/papers/digest")
 async def generate_digest(req: DigestRequest, user=Depends(get_current_user)):
-    system = """You are a data extraction engine. Extract SPECIFIC numbers, measurements, and surgical thresholds from the source text.
+    system = "You are a senior radiology attending. Create surgical teaching digests."
 
-CRITICAL INSTRUCTIONS:
-- You MUST use ONLY information from the source text below
-- If the source does not contain a number, do NOT invent one
-- Extract VERBATIM surgical thresholds when present
-- DO NOT use generic templates
-- EVERY rule must reference a SPECIFIC number from the source"""
+    prompt = f"""Create a surgical teaching digest for: {req.input_text}
 
-    prompt = f"""SOURCE TEXT (extract data ONLY from this text):
-{req.input_text}
-
-Now extract the following 11 sections. If the source does not contain information for a section, write "Not specified in source".
+Use EXACTLY these 11 headers. Be specific with numbers and thresholds.
 
 1. CONSULTANT SUMMARY
-[Extract: What is the single most important surgical decision-driving fact? Include SPECIFIC numbers from source.]
+[One sentence with key surgical decision]
 
 2. CORE FRAMEWORK
-[Extract: The decision-making steps mentioned in the source. Use the EXACT thresholds from source.]
+[Step-by-step decision points]
 
 3. HIGH-YIELD RULES
-[Extract: Specific rules with numbers from source. Format: finding → threshold → action]
+[Bullet points with thresholds]
 
 4. NORMAL VS ABNORMAL
-[Extract: How the source distinguishes acute vs chronic, or normal vs abnormal surgically]
+[Key distinctions]
 
 5. DIFFERENTIALS
-[Extract: EVERY diagnosis mentioned in the source. Create table from source content.]
+[Table format]
 
 6. IMAGING STRATEGY
-[Extract: What imaging findings answer which surgical questions, per source]
+[What answers which question]
 
 7. REPORTING
-[Extract: Example report impression from source or synthesize from source data]
+[Example impression]
 
 8. PEARLS
-[Extract: Specific surgical pearls mentioned in source]
+[Key surgical pearls]
 
 9. EXAM TRAPS
-[Extract: Specific pitfalls mentioned in source]
+[Pitfalls to avoid]
 
 10. FAILURE MODE
-[Extract: What happens if findings are missed, per source]
+[Surgical consequences]
 
 11. RAPID RECALL
-[Extract: Key surgical anchors from source]
+[Key anchors]
 
-Now extract ONLY from the source text above. Do NOT use generic knowledge. If a number appears in source, use it. If not, say "Not specified"."""
+Now produce the digest:"""
     
-    raw = await call_openai(req.api_key, system, prompt, max_tokens=4000)
+    raw = await call_openai(req.api_key, system, prompt, max_tokens=2500)
     
-    # Parse sections (same as before)
-    def parse_section(text, labels):
-        for label in labels:
-            patterns = [
-                rf'(?:^|\n)(?:\d+\.\s*|\#\#?\s*|\*\*){re.escape(label)}.*?\n([\s\S]*?)(?=\n(?:\d+\.\s*|\#\#?\s*|\*\*|$))',
-                rf'{re.escape(label)}[:\s]*([\s\S]*?)(?=\n\d+\.\s*|\n\#\#?\s*|\n\*\*|$)',
-            ]
-            for pattern in patterns:
-                m = re.search(pattern, text, re.IGNORECASE)
-                if m:
-                    return m.group(1).strip()
-        return "Not specified in source"
+    # Simple parsing
+    def extract_section(text, header):
+        pattern = rf'{header}[:\s]*\n?([\s\S]*?)(?=\n\d+\.|\n[A-Z]|\Z)'
+        match = re.search(pattern, text, re.IGNORECASE)
+        return match.group(1).strip()[:500] if match else "No specific data in source"
     
     result = {
-        "consultant_summary": parse_section(raw, ["CONSULTANT SUMMARY", "1. CONSULTANT SUMMARY"]),
-        "core_framework": parse_section(raw, ["CORE FRAMEWORK", "2. CORE FRAMEWORK"]),
-        "high_yield_rules": parse_section(raw, ["HIGH-YIELD RULES", "3. HIGH-YIELD RULES"]),
-        "normal_vs_abnormal": parse_section(raw, ["NORMAL VS ABNORMAL", "4. NORMAL VS ABNORMAL"]),
-        "differentials": parse_section(raw, ["DIFFERENTIALS", "5. DIFFERENTIALS"]),
-        "imaging_strategy": parse_section(raw, ["IMAGING STRATEGY", "6. IMAGING STRATEGY"]),
-        "reporting": parse_section(raw, ["REPORTING (ATTENDING LEVEL)", "7. REPORTING", "REPORTING"]),
-        "pearls": parse_section(raw, ["PEARLS", "8. PEARLS"]),
-        "exam_traps": parse_section(raw, ["EXAM TRAPS", "9. EXAM TRAPS"]),
-        "failure_mode": parse_section(raw, ["FAILURE MODE", "10. FAILURE MODE"]),
-        "rapid_recall": parse_section(raw, ["RAPID RECALL", "11. RAPID RECALL"]),
+        "consultant_summary": extract_section(raw, "1. CONSULTANT SUMMARY"),
+        "core_framework": extract_section(raw, "2. CORE FRAMEWORK"),
+        "high_yield_rules": extract_section(raw, "3. HIGH-YIELD RULES"),
+        "normal_vs_abnormal": extract_section(raw, "4. NORMAL VS ABNORMAL"),
+        "differentials": extract_section(raw, "5. DIFFERENTIALS"),
+        "imaging_strategy": extract_section(raw, "6. IMAGING STRATEGY"),
+        "reporting": extract_section(raw, "7. REPORTING"),
+        "pearls": extract_section(raw, "8. PEARLS"),
+        "exam_traps": extract_section(raw, "9. EXAM TRAPS"),
+        "failure_mode": extract_section(raw, "10. FAILURE MODE"),
+        "rapid_recall": extract_section(raw, "11. RAPID RECALL"),
         "raw": raw,
         "saved": False,
         "id": None,
@@ -522,6 +507,7 @@ Now extract ONLY from the source text above. Do NOT use generic knowledge. If a 
         result["id"] = pid
     
     return result
+
 
 
 @app.get("/papers")
