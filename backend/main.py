@@ -666,6 +666,11 @@ Writing style:
 
 RULES:
 - Do NOT summarize everything — prioritize what impacts diagnosis and management
+- DO extract every specific number, threshold, percentage, and measurement 
+  from the source text — these are the highest-yield facts
+- DO include recent study data and RCT results when present in the article
+- DO flag when the article contradicts commonly held beliefs 
+  (e.g. actual tear location vs classic teaching)
 - Do NOT restate obvious background information
 - Do NOT include long anatomy sections unless clinically relevant
 - Convert descriptive text into pattern recognition
