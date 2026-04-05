@@ -29,6 +29,86 @@
   --body:     'DM Sans', sans-serif;
   --shadow:   0 4px 24px rgba(0,0,0,.5);
 }
+/* ── Custom Prompt Panel ── */
+.prompt-toggle-btn {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text3);
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all .15s;
+  margin-bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.prompt-toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+.prompt-toggle-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(77,159,255,.07); }
+.prompt-panel {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px;
+  margin-bottom: 16px;
+  animation: fadeUp .2s ease;
+}
+.prompt-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.prompt-panel-label {
+  font-size: 10px;
+  font-family: var(--mono);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+.prompt-hint-text {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text3);
+  margin-top: 6px;
+  line-height: 1.5;
+}
+.prompt-hint-text b { color: var(--accent); }
+.prompt-chips {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.chip {
+  padding: 4px 11px;
+  border-radius: 14px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text2);
+  font-family: var(--mono);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+.parse-warning {
+  display: none;
+  background: rgba(240,180,41,.07);
+  border: 1px solid rgba(240,180,41,.3);
+  border-radius: 8px;
+  padding: 9px 13px;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--amber);
+  margin-top: 14px;
+  line-height: 1.6;
+}
+.parse-warning.show { display: block; }
+
+/*//////////////////////////////////////////////////////////////////*/
 .theme-toggle {
   background: var(--surface2);
   border: 1px solid var(--border);
@@ -482,6 +562,37 @@ textarea::placeholder { color:var(--text3); }
         <div class="config-field"><label>Modality</label><select id="modality"><option>Any</option><option>CT</option><option>MRI</option><option>X-Ray</option><option>Ultrasound</option><option>PET-CT</option><option>Fluoroscopy</option><option>Mammography</option><option>Nuclear Medicine</option></select></div>
       </div>
       <div class="field-group"><div class="field-label" id="r-label">Paste Rough Impression or Diagnostic Summary</div><textarea id="r-input" placeholder="e.g. Liver lesion. Uncertain if benign. Spleen enlarged. Bilateral pleural effusions small."></textarea></div>
+
+      <!-- Custom Prompt Toggle -->
+      <button class="prompt-toggle-btn" id="r-prompt-toggle" onclick="togglePromptPanel('report')" style="margin-top:14px">
+        ✦ Customize prompt
+      </button>
+
+      <!-- Custom Prompt Panel (hidden by default) -->
+      <div class="prompt-panel" id="report-prompt-panel" style="display:none">
+        <div class="prompt-panel-header">
+          <span class="prompt-panel-label">Custom prompt</span>
+          <button class="btn-sm" onclick="resetPrompt('report')">↺ Reset to default</button>
+        </div>
+        <textarea id="report-custom-prompt" rows="7"
+          style="font-family:var(--mono);font-size:11px;line-height:1.6;min-height:140px"
+          placeholder="Leave blank to use the default prompt. Use {{input}} where you want your report text inserted."></textarea>
+        <div class="prompt-hint-text">
+          Tip: Include <b>{{input}}</b> as a placeholder for your report text. Keep section headers
+          like <b>**IMPRESSION**</b> and <b>**DIFFERENTIAL DIAGNOSIS**</b> for best structured results.
+        </div>
+        <div class="prompt-chips">
+          <button class="chip" onclick="applyTemplate('report','senior')">👨‍⚕️ Senior radiologist</button>
+          <button class="chip" onclick="applyTemplate('report','teaching')">🎓 Teaching mode</button>
+          <button class="chip" onclick="applyTemplate('report','concise')">⚡ Concise mode</button>
+        </div>
+      </div>
+
+      <div class="parse-warning" id="r-parse-warning">
+        ⚠ Some sections may be missing. Your custom prompt uses different section headers than expected.
+        Results are shown using the raw output. <a style="color:var(--amber);cursor:pointer" onclick="resetPrompt('report');togglePromptPanel('report')">Reset to default prompt</a>
+      </div>
+
       <div class="action-row">
         <button class="btn-primary" id="polish-btn" onclick="polishReport()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Polish Report</button>
         <button class="btn-ghost" onclick="clearReport()">Clear</button>
@@ -509,6 +620,37 @@ textarea::placeholder { color:var(--text3); }
         <button class="input-tab" id="dt-text" onclick="setDigestMode('text')">📋 Paste Text</button>
       </div>
       <div class="field-group"><div class="field-label" id="d-label">Paper Title or Topic</div><textarea id="d-input" rows="3" style="min-height:80px" placeholder="e.g. LI-RADS v2018 CT/MRI criteria for HCC, Radiology 2018"></textarea></div>
+
+      <!-- Custom Prompt Toggle -->
+      <button class="prompt-toggle-btn" id="d-prompt-toggle" onclick="togglePromptPanel('digest')" style="margin-top:14px">
+        ✦ Customize prompt
+      </button>
+
+      <!-- Custom Prompt Panel (hidden by default) -->
+      <div class="prompt-panel" id="digest-prompt-panel" style="display:none">
+        <div class="prompt-panel-header">
+          <span class="prompt-panel-label">Custom prompt</span>
+          <button class="btn-sm" onclick="resetPrompt('digest')">↺ Reset to default</button>
+        </div>
+        <textarea id="digest-custom-prompt" rows="7"
+          style="font-family:var(--mono);font-size:11px;line-height:1.6;min-height:140px"
+          placeholder="Leave blank to use the default prompt. Use {{input}} where you want the paper text inserted."></textarea>
+        <div class="prompt-hint-text">
+          Tip: Include <b>{{input}}</b> as a placeholder for the paper text. Keep section headers like
+          <b>**BOTTOM LINE**</b> and <b>**QUICK HITS**</b> for best structured results.
+        </div>
+        <div class="prompt-chips">
+          <button class="chip" onclick="applyTemplate('digest','senior')">👨‍⚕️ Senior level</button>
+          <button class="chip" onclick="applyTemplate('digest','teaching')">🎓 Teaching mode</button>
+          <button class="chip" onclick="applyTemplate('digest','concise')">⚡ Concise mode</button>
+        </div>
+      </div>
+
+      <div class="parse-warning" id="d-parse-warning">
+        ⚠ Some sections may be missing. Your custom prompt uses different section headers than expected.
+        <a style="color:var(--amber);cursor:pointer" onclick="resetPrompt('digest');togglePromptPanel('digest')">Reset to default prompt</a>
+      </div>
+
       <div class="action-row">
         <button class="btn-primary" id="digest-btn" onclick="generateDigest()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Generate Digest</button>
         <button class="btn-ghost" onclick="clearDigest()">Clear</button>
@@ -705,16 +847,22 @@ function setReportMode(m) {
         document.getElementById('r-input').placeholder = 'Paste your full radiology report draft here…';
     }
 }
+
+
 async function polishReport() {
     const input = document.getElementById('r-input').value.trim();
     if (!input) { toast('Enter a report or impression.', 'err'); return; }
     const key = getApiKey();
     if (!key) { toast('Set your API key first.', 'err'); return; }
     
+    // Read custom prompt — null if empty (backend falls back to default)
+    const userPrompt = document.getElementById('report-custom-prompt')?.value.trim() || null;
+
     const btn = document.getElementById('polish-btn');
     btn.disabled = true;
     document.getElementById('r-loading').classList.add('show');
     document.getElementById('r-result').classList.remove('show');
+    document.getElementById('r-parse-warning').classList.remove('show');
     
     try {
         const data = await api('POST', '/reports/polish', {
@@ -724,31 +872,33 @@ async function polishReport() {
             input_text: input,
             api_key: key,
             save: document.getElementById('r-save').checked,
+            user_prompt: userPrompt,
         });
         
-      // Show all 4 sections cleanly
-        const imp  = data.impression    || data.raw || '—';
-        const diff = data.differentials || '—';
-        const fb   = data.feedback      || '—';
-        const audit= data.audit         || '';
+        const imp   = data.impression    || data.raw || '—';
+        const diff  = data.differentials || '—';
+        const fb    = data.feedback      || '—';
+        const audit = data.audit         || '';
 
         document.getElementById('r-res-imp').innerHTML  = `<div style="white-space:pre-wrap;font-size:13px;line-height:1.75">${escapeHtml(imp)}</div>`;
         document.getElementById('r-res-diff').innerHTML = `<div style="white-space:pre-wrap;font-size:12px;line-height:1.75;font-family:var(--mono)">${escapeHtml(diff)}</div>`;
         document.getElementById('r-res-fb').innerHTML   = `<div style="white-space:pre-wrap;font-size:13px;line-height:1.75">${escapeHtml(fb)}</div>`;
 
-        // Show audit section if exists
         const auditSection = document.getElementById('r-res-audit');
         if (auditSection && audit) {
             auditSection.closest('.result-section').style.display = '';
             auditSection.innerHTML = `<div style="white-space:pre-wrap;font-size:12px;line-height:1.75;font-family:var(--mono)">${escapeHtml(audit)}</div>`;
         }
 
-        // Make sure all sections are visible
         document.querySelectorAll('#r-result .result-section').forEach(s => s.style.display = '');
         document.querySelectorAll('#r-result .divider').forEach(d => d.style.display = '');
-
         document.getElementById('r-result').classList.add('show');
         recentReport = data;
+
+        // Show parse warning if backend flagged re-extraction
+        if (data.reextracted && userPrompt) {
+            document.getElementById('r-parse-warning').classList.add('show');
+        }
         
         const saveBtn = document.getElementById('r-save-btn');
         if (data.saved) {
@@ -768,6 +918,7 @@ async function polishReport() {
         document.getElementById('r-loading').classList.remove('show'); 
     }
 }
+
 
 async function saveCurrentReport() {
     if (!recentReport || recentReport.saved) return;
@@ -807,11 +958,15 @@ async function generateDigest() {
     if (!input) { toast('Enter paper info.', 'err'); return; }
     const key = getApiKey();
     if (!key) { toast('Set your API key.', 'err'); return; }
-    
+
+    // Read custom prompt — null if empty
+    const userPrompt = document.getElementById('digest-custom-prompt')?.value.trim() || null;
+
     const btn = document.getElementById('digest-btn');
     btn.disabled = true;
     document.getElementById('d-loading').classList.add('show');
     document.getElementById('d-result').classList.remove('show');
+    document.getElementById('d-parse-warning').classList.remove('show');
     
     try {
         const data = await api('POST', '/papers/digest', {
@@ -819,25 +974,24 @@ async function generateDigest() {
             input_text: input,
             api_key: key,
             save: document.getElementById('d-save').checked,
+            user_prompt: userPrompt,
         });
 
-        // Map all 8 sections with labels
         const sections = [
-            { key: 'bottom_line',   label: '⚡ Bottom Line',     color: 'var(--accent)'  },
-            { key: 'how_to_see_it', label: '🔍 How To See It',   color: 'var(--green)'   },
-            { key: 'the_rules',     label: '📏 The Rules',       color: 'var(--amber)'   },
-            { key: 'differentials', label: '🔀 Differentials',   color: 'var(--violet)'  },
-            { key: 'imaging',       label: '🖥️ Imaging',         color: 'var(--accent)'  },
-            { key: 'report',        label: '📋 Report',          color: 'var(--green)'   },
-            { key: 'dont_miss',     label: '🔴 Don\'t Miss',     color: 'var(--red)'     },
-            { key: 'quick_hits',    label: '⚡ Quick Hits',      color: 'var(--amber)'   },
+            { key: 'bottom_line',   label: '⚡ Bottom Line',   color: 'var(--accent)' },
+            { key: 'how_to_see_it', label: '🔍 How To See It', color: 'var(--green)'  },
+            { key: 'the_rules',     label: '📏 The Rules',     color: 'var(--amber)'  },
+            { key: 'differentials', label: '🔀 Differentials', color: 'var(--violet)' },
+            { key: 'imaging',       label: '🖥️ Imaging',       color: 'var(--accent)' },
+            { key: 'report',        label: '📋 Report',        color: 'var(--green)'  },
+            { key: 'dont_miss',     label: "🔴 Don't Miss",    color: 'var(--red)'    },
+            { key: 'quick_hits',    label: '⚡ Quick Hits',    color: 'var(--amber)'  },
         ];
 
         const container = document.getElementById('d-sections-container');
         container.innerHTML = sections.map((s, i) => {
             const content = data[s.key] || '—';
-            return `
-                ${i > 0 ? '<div class="divider"></div>' : ''}
+            return `${i > 0 ? '<div class="divider"></div>' : ''}
                 <div class="result-section">
                     <div class="result-tag" style="color:${s.color}">${s.label}</div>
                     <div class="result-body mono">${esc(content)}</div>
@@ -846,16 +1000,18 @@ async function generateDigest() {
 
         document.getElementById('d-result').classList.add('show');
         recentDigest = data;
-        
+
+        if (data.reextracted && userPrompt) {
+            document.getElementById('d-parse-warning').classList.add('show');
+        }
+
         const saveBtn = document.getElementById('d-save-btn');
         if (data.saved) {
-            saveBtn.textContent = '✓ Saved';
-            saveBtn.disabled = true;
+            saveBtn.textContent = '✓ Saved'; saveBtn.disabled = true;
             updateLibCount();
             toast('Digest generated & saved ✓', 'ok');
         } else {
-            saveBtn.textContent = '💾 Save';
-            saveBtn.disabled = false;
+            saveBtn.textContent = '💾 Save'; saveBtn.disabled = false;
             toast('Digest generated ✓', 'ok');
         }
     } catch (e) {
@@ -865,6 +1021,7 @@ async function generateDigest() {
         document.getElementById('d-loading').classList.remove('show');
     }
 }
+
 
 async function saveCurrentDigest() {
     if (!recentDigest || recentDigest.saved) return;
@@ -1127,6 +1284,142 @@ function loadTheme() { const saved = localStorage.getItem('radiology_theme'); se
 
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 function escapeHtml(str) { return esc(str); }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CUSTOM PROMPT PANEL FUNCTIONS
+function togglePromptPanel(feature) {
+    const panel = document.getElementById(`${feature}-prompt-panel`);
+    const btn   = document.getElementById(`${feature === 'report' ? 'r' : 'd'}-prompt-toggle`);
+    const isHidden = panel.style.display === 'none';
+    panel.style.display = isHidden ? 'block' : 'none';
+    btn.classList.toggle('active', isHidden);
+    btn.innerHTML = isHidden ? '✕ Hide prompt editor' : '✦ Customize prompt';
+}
+
+function resetPrompt(feature) {
+    document.getElementById(`${feature}-custom-prompt`).value = '';
+    toast('Reset to default prompt ✓', 'ok');
+}
+
+const PROMPT_TEMPLATES = {
+    report: {
+        senior: `You are a US-trained senior attending radiologist at final signature level. Be definitive — no hedging, no "could represent", no "clinical correlation recommended".
+
+ORIGINAL REPORT:
+{{input}}
+
+Produce exactly these 4 sections:
+
+**IMPRESSION**
+2-4 declarative sentences. State the diagnosis. Include a management recommendation only if clinically necessary.
+
+**DIFFERENTIAL DIAGNOSIS**
+1. [Diagnosis] — [imaging feature] — [likelihood rationale]
+2. [Diagnosis] — [imaging feature] — [likelihood rationale]
+3. [Diagnosis] — [imaging feature] — [likelihood rationale]
+
+**REASONING**
+3-5 sentences explaining the clinico-radiographic logic. What did you use? What did you exclude?
+
+**LANGUAGE UPGRADE AUDIT**
+List 3-5 weak phrases from the report → stronger attending-level replacements.
+Format: "weak phrase" → "strong replacement"`,
+
+        teaching: `You are a radiology attending running a teaching session with a fellow. Explain everything — name every sign, justify every decision, add pearls.
+
+ORIGINAL REPORT:
+{{input}}
+
+Produce exactly these 4 sections:
+
+**IMPRESSION**
+State the diagnosis clearly. Add a 1-sentence teaching point about why this diagnosis fits.
+
+**DIFFERENTIAL DIAGNOSIS**
+1. [Diagnosis] — [imaging feature] — [teaching point about this differential]
+2. [Diagnosis] — [imaging feature] — [teaching point about this differential]
+3. [Diagnosis] — [imaging feature] — [teaching point about this differential]
+
+**REASONING**
+5-7 sentences. Walk through your thinking step by step. Name the key imaging signs. Explain what ruled things in and out. Add a learning pearl at the end.
+
+**LANGUAGE UPGRADE AUDIT**
+List ALL weak phrases you can find → replace with strong attending-level language.
+Format: "weak phrase" → "strong replacement"`,
+
+        concise: `You are a senior radiologist. Be extremely brief and direct.
+
+ORIGINAL REPORT:
+{{input}}
+
+**IMPRESSION**
+Maximum 2 sentences. Diagnosis only. No hedging.
+
+**DIFFERENTIAL DIAGNOSIS**
+1. [Diagnosis] — [one key feature]
+2. [Diagnosis] — [one key feature]
+3. [Diagnosis] — [one key feature]
+
+**REASONING**
+2 sentences maximum.
+
+**LANGUAGE UPGRADE AUDIT**
+Top 3 swaps only.`,
+    },
+
+    digest: {
+        senior: `You are a senior radiology attending summarizing a paper for clinical practice. Focus on what changes management.
+
+{{input}}
+
+Produce these 8 sections:
+
+1. **BOTTOM LINE**
+2. **HOW TO SEE IT**
+3. **THE RULES**
+4. **DIFFERENTIALS**
+5. **IMAGING**
+6. **REPORT**
+7. **DON'T MISS**
+8. **QUICK HITS**`,
+
+        teaching: `You are a radiology attending creating a teaching digest for a fellow preparing for boards. Be exhaustive. Every number needs a threshold. Every bullet needs a consequence.
+
+{{input}}
+
+Produce these 8 sections with maximum clinical density:
+
+1. **BOTTOM LINE**
+2. **HOW TO SEE IT**
+3. **THE RULES**
+4. **DIFFERENTIALS**
+5. **IMAGING**
+6. **REPORT**
+7. **DON'T MISS**
+8. **QUICK HITS**`,
+
+        concise: `Summarize this radiology paper concisely for a busy attending.
+
+{{input}}
+
+1. **BOTTOM LINE** — 2 sentences max
+2. **HOW TO SEE IT** — 4 bullets max
+3. **THE RULES** — 3 rules max
+4. **DIFFERENTIALS** — table, 4 rows max
+5. **IMAGING** — 3 bullets max
+6. **REPORT** — findings + impression only
+7. **DON'T MISS** — top 3 only
+8. **QUICK HITS** — 5 facts max`,
+    },
+};
+
+function applyTemplate(feature, templateKey) {
+    const tmpl = PROMPT_TEMPLATES[feature]?.[templateKey];
+    if (!tmpl) return;
+    document.getElementById(`${feature}-custom-prompt`).value = tmpl;
+    toast('Template applied ✓', 'ok');
+}
+
 </script>
 </body>
 </html>

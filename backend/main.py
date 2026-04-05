@@ -14,13 +14,14 @@ from sqlalchemy import (
     DateTime, ForeignKey, Boolean, func
 )
 from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from datetime import datetime, timedelta
 import jwt
 import bcrypt
 import os
 import httpx
 import re
+import json as json_lib
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/radiology_coach")
@@ -59,6 +60,7 @@ reports = Table("reports", metadata,
     Column("raw_response", Text),
     Column("created_at",   DateTime, server_default=func.now()),
     Column("title",        String(255)),
+    Column("user_prompt",  Text, nullable=True),  # ADDED: store custom prompt
 )
 
 papers = Table("papers", metadata,
@@ -72,6 +74,7 @@ papers = Table("papers", metadata,
     Column("implications", Text),
     Column("raw_response", Text),
     Column("created_at",   DateTime, server_default=func.now()),
+    Column("user_prompt",  Text, nullable=True),  # ADDED: store custom prompt
 )
 
 engine = sqlalchemy.create_engine(DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://"))
@@ -80,10 +83,25 @@ engine = sqlalchemy.create_engine(DATABASE_URL.replace("postgresql://", "postgre
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     metadata.create_all(engine)
+    
+    # Add user_prompt column to existing tables (safe — IF NOT EXISTS means no crash if already there)
+    try:
+        with engine.connect() as conn:
+            conn.execute(sqlalchemy.text(
+                "ALTER TABLE reports ADD COLUMN IF NOT EXISTS user_prompt TEXT"
+            ))
+            conn.execute(sqlalchemy.text(
+                "ALTER TABLE papers ADD COLUMN IF NOT EXISTS user_prompt TEXT"
+            ))
+            conn.commit()
+            print("✅ Database migration: user_prompt columns ensured")
+    except Exception as e:
+        print(f"Migration note: {e}")
+    
     await database.connect()
     yield
     await database.disconnect()
-
+    
 app = FastAPI(title="Radiology Coach API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(CORSMiddleware,
@@ -118,12 +136,14 @@ class PolishRequest(BaseModel):
     api_key: str
     save: bool = False
     title: Optional[str] = None
+    user_prompt: Optional[str] = None  # ADDED: custom prompt from frontend
 
 class DigestRequest(BaseModel):
     input_mode: str
     input_text: str
     api_key: str
     save: bool = False
+    user_prompt: Optional[str] = None  # ADDED: custom prompt from frontend
 
 class UpdateTitleRequest(BaseModel):
     title: str
@@ -195,7 +215,7 @@ async def call_openai(
     api_key: str,
     system: str,
     prompt: str,
-    max_tokens: int = 6000,  # Add this parameter
+    max_tokens: int = 6000,
     temperature: float = 0.3,
 ) -> str:
     """Proxy OpenAI call — user key used per-request, never persisted."""
@@ -208,7 +228,7 @@ async def call_openai(
             },
             json={
                 "model": "gpt-4o-mini",
-                "max_tokens": max_tokens,  # Use the parameter
+                "max_tokens": max_tokens,
                 "temperature": temperature,
                 "messages": [
                     {"role": "system", "content": system},
@@ -226,8 +246,11 @@ async def call_openai(
         raise HTTPException(status_code=502, detail=error_detail)
     
     data = resp.json()
-    return data["choices"][0]["message"]["content"]   
+    return data["choices"][0]["message"]["content"]
+
+# ─── PARSING HELPERS (ENHANCED WITH ALIASES) ─────────────────────────────────
 def parse_section(text: str, labels: list) -> str:
+    """Parse section with multiple label aliases."""
     for label in labels:
         # Look for markdown headers (## 1. LABEL or **LABEL** or LABEL:)
         patterns = [
@@ -240,15 +263,214 @@ def parse_section(text: str, labels: list) -> str:
             if m:
                 return m.group(0).strip() if m.group(0) else m.group(1).strip() if m.group(1) else ""
     return ""
+
+def parse_report_section(text: str, labels: list) -> str:
+    """Parse report section with multiple label aliases."""
+    for label in labels:
+        pattern = rf'\*{{0,2}}{re.escape(label)}\*{{0,2}}[:\s]*\n([\s\S]*?)(?=\n\*{{0,2}}[A-Z]|\Z)'
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+    return ""
+
+# ─── JSON SCHEMAS FOR STRUCTURED PARSING ─────────────────────────────────────
+JSON_SCHEMAS = {
+    "report_mode_a": {
+        "impression": "Polished, definitive impression paragraph (2-4 sentences)",
+        "differentials": "Three prioritized differentials with imaging rationale",
+        "feedback": "Clinico-radiographic reasoning (3-5 sentences)",
+        "audit": "Weak phrase → strong replacement pairs, one per line",
+    },
+    "paper_digest": {
+        "bottom_line": "2-3 sentence summary of the key finding",
+        "how_to_see_it": "Signs with identification and implications",
+        "the_rules": "Measurement thresholds with actions",
+        "differentials": "Table of diagnoses with discriminators",
+        "imaging": "Modality findings with implications",
+        "report": "Complete attending-level radiology report",
+        "dont_miss": "Errors with consequences and avoidance",
+        "quick_hits": "Board-style facts with numbers",
+    },
+}
+
+JSON_WRAPPER = """
+---
+CRITICAL OUTPUT FORMAT INSTRUCTION - THIS OVERRIDES ALL OTHER FORMATTING:
+Respond ONLY with a valid JSON object. No markdown fences, no text outside the JSON.
+Use exactly these keys: {keys}
+
+Field descriptions:
+{field_descriptions}
+
+Your response must be parseable by Python's json.loads(). 
+Use \\n for newlines inside strings. Do not add any text before or after the JSON.
+"""
+
+EXTRACTION_PROMPT = """You are a data extraction assistant. Given the following radiology AI output, extract and return ONLY a JSON object with these exact keys:
+
+{json_schema}
+
+Rules:
+- If a field's content is absent from the text, use null for that field.
+- Preserve the original wording exactly - do not paraphrase or summarize.
+- Return ONLY the JSON object, no other text before or after.
+
+TEXT TO EXTRACT FROM:
+{raw_text}"""
+
+async def extract_structure_with_llm(raw: str, feature_key: str, api_key: str) -> dict:
+    """Second-pass extraction when primary parsing yields empty results."""
+    schema = JSON_SCHEMAS.get(feature_key, {})
+    if not schema:
+        return {}
     
+    schema_desc = "\n".join(f'"{k}": {v}' for k, v in schema.items())
+    prompt = EXTRACTION_PROMPT.format(
+        json_schema=schema_desc,
+        raw_text=raw[:4000],  # Keep it cheap
+    )
+    
+    try:
+        reextraction_raw = await call_openai(
+            api_key,
+            "You are a precise JSON extraction assistant. Respond only with valid JSON.",
+            prompt,
+            max_tokens=2000,
+            temperature=0.0,
+        )
+        
+        # Clean and parse
+        clean = reextraction_raw.strip()
+        if clean.startswith("```json"):
+            clean = clean[7:]
+        if clean.startswith("```"):
+            clean = clean[3:]
+        if clean.endswith("```"):
+            clean = clean[:-3]
+        clean = clean.strip()
+        
+        return json_lib.loads(clean)
+    except Exception as e:
+        print(f"LLM re-extraction failed: {e}")
+        return {}
+
+def parse_quality_score(parsed: dict, feature_key: str) -> dict:
+    """Returns quality metrics about the parsed result."""
+    schema_keys = list(JSON_SCHEMAS.get(feature_key, {}).keys())
+    if not schema_keys:
+        return {"score": 1.0, "degraded": False}
+    
+    filled = sum(1 for k in schema_keys if parsed.get(k))
+    total = len(schema_keys)
+    score = filled / total if total else 1.0
+    
+    return {
+        "score": score,
+        "filled_fields": filled,
+        "total_fields": total,
+        "degraded": score < 0.5,
+    }
+
+async def parse_llm_response(
+    raw: str, 
+    feature_key: str, 
+    output_format: str,
+    api_key: Optional[str] = None,
+    user_prompt: Optional[str] = None
+) -> dict:
+    """
+    Universal parser - tries JSON first, then regex, then LLM re-extraction.
+    """
+    
+    # TRY 1: JSON parsing (if we requested JSON format)
+    if output_format == "json":
+        try:
+            clean = raw.strip()
+            if clean.startswith("```json"):
+                clean = clean[7:]
+            if clean.startswith("```"):
+                clean = clean[3:]
+            if clean.endswith("```"):
+                clean = clean[:-3]
+            clean = clean.strip()
+            
+            parsed = json_lib.loads(clean)
+            
+            # Validate that we got all expected keys
+            expected_keys = JSON_SCHEMAS.get(feature_key, {}).keys()
+            if expected_keys:
+                for key in expected_keys:
+                    if key not in parsed:
+                        parsed[key] = ""
+            
+            return parsed
+            
+        except json_lib.JSONDecodeError as e:
+            print(f"JSON parse failed: {e}")
+            pass
+    
+    # TRY 2: Regex parsing (existing behavior with enhanced aliases)
+    parsed = {}
+    if feature_key == "report_mode_a":
+        parsed = {
+            "impression": parse_report_section(raw, ["IMPRESSION", "FINAL IMPRESSION", "CONCLUSION", "ASSESSMENT", "SUMMARY"]),
+            "differentials": parse_report_section(raw, ["DIFFERENTIAL DIAGNOSIS", "DIFFERENTIALS", "DDX", "DIFFERENTIAL"]),
+            "feedback": parse_report_section(raw, ["REASONING", "RATIONALE", "CLINICAL REASONING", "EXPLANATION", "TEACHING POINTS"]),
+            "audit": parse_report_section(raw, ["LANGUAGE UPGRADE AUDIT", "LANGUAGE AUDIT", "LANGUAGE IMPROVEMENTS", "PHRASING AUDIT"]),
+        }
+    elif feature_key == "paper_digest":
+        parsed = {
+            "bottom_line": parse_section(raw, ["BOTTOM LINE", "SUMMARY", "KEY TAKEAWAY", "CORE MESSAGE"]),
+            "how_to_see_it": parse_section(raw, ["HOW TO SEE IT", "IDENTIFICATION", "VISUAL CUES"]),
+            "the_rules": parse_section(raw, ["THE RULES", "RULES", "THRESHOLDS", "DECISION RULES"]),
+            "differentials": parse_section(raw, ["DIFFERENTIALS", "DIFFERENTIAL DIAGNOSIS", "DDX"]),
+            "imaging": parse_section(raw, ["IMAGING", "FINDINGS", "IMAGING FINDINGS"]),
+            "report": parse_section(raw, ["REPORT", "FINAL REPORT", "RADIOLOGY REPORT"]),
+            "dont_miss": parse_section(raw, ["DON'T MISS", "DONT MISS", "PITFALLS", "COMMON ERRORS"]),
+            "quick_hits": parse_section(raw, ["QUICK HITS", "FAST FACTS", "PEARLS", "KEY FACTS", "BOARD FACTS"]),
+        }
+    
+    # TRY 3: LLM re-extraction (safety net for custom prompts)
+    if user_prompt and api_key:
+        quality = parse_quality_score(parsed, feature_key)
+        if quality["degraded"]:
+            print(f"Parse degraded ({quality['score']:.0%}), attempting LLM re-extraction...")
+            llm_parsed = await extract_structure_with_llm(raw, feature_key, api_key)
+            if llm_parsed:
+                parsed.update(llm_parsed)
+                parsed["_reextracted"] = True
+    
+    return parsed
+
 # ─── REPORT COACH ────────────────────────────────────────────────────────────
 @app.post("/reports/polish")
 async def polish_report(req: PolishRequest, user=Depends(get_current_user)):
     system = """You are an elite, U.S.-trained senior radiologist with subspecialty expertise. You produce final-signature quality reports with structured, actionable impressions."""
 
-    if req.mode == "a":
-        prompt = f"""You are a US-trained senior radiologist at final signature level. 
+    feature_key = "report_mode_a"
+    
+    # Build prompt with JSON mode enabled
+    if req.user_prompt:
+        # User provided custom prompt
+        template = req.user_prompt
+        if "{{input}}" in template:
+            prompt = template.replace("{{input}}", req.input_text)
+        else:
+            prompt = f"{template}\n\nINPUT TEXT:\n{req.input_text}"
         
+        # Add JSON wrapper for structured output
+        schema = JSON_SCHEMAS[feature_key]
+        wrapper = JSON_WRAPPER.format(
+            keys=", ".join(f'"{k}"' for k in schema.keys()),
+            field_descriptions="\n".join(f'  "{k}": {v}' for k, v in schema.items()),
+        )
+        prompt = prompt + wrapper
+        output_format = "json"
+    else:
+        # Use default prompt
+        if req.mode == "a":
+            prompt = f"""You are a US-trained senior radiologist at final signature level. 
+            
 Analyze this radiology report and produce ONLY the structured output below. Do NOT repeat the original report.
 
 ORIGINAL REPORT:
@@ -277,29 +499,9 @@ Write 3-5 sentences explaining the clinico-radiographic reasoning. Connect the i
 List 3-5 weak phrases found in the original report → replace with strong attending-level phrasing.
 Format: "weak phrase" → "strong replacement"
 
-EXAMPLE OUTPUT FORMAT:
-
-**IMPRESSION**
-Right lower lobe airspace consolidation in the setting of cough and fever is most consistent with community-acquired pneumonia. No parapneumonic effusion or pneumothorax. Cardiac silhouette and mediastinum are unremarkable. Recommend follow-up chest radiograph in 6–8 weeks to confirm resolution and exclude an underlying mass.
-
-**DIFFERENTIAL DIAGNOSIS**
-1. Community-acquired pneumonia — lobar/segmental airspace consolidation in febrile patient with cough is the classic presentation; right lower lobe is the most common site.
-2. Aspiration pneumonitis — right lower lobe is gravitationally dependent; elevate if aspiration risk present in clinical history.
-3. Post-obstructive consolidation — endobronchial lesion can mimic pneumonia; absence of volume loss makes this less likely, but warrants consideration if consolidation fails to clear.
-
-**REASONING**
-The combination of lobar airspace opacification in the right lower zone with fever and cough creates a coherent clinico-radiographic syndrome strongly favoring infectious consolidation. The absence of pleural effusion argues against a complex or necrotizing process. The key imaging driver is the pattern and distribution — patchy-to-confluent airspace disease respecting lobar anatomy.
-
-**LANGUAGE UPGRADE AUDIT**
-- "suggestive of consolidation" → "consistent with consolidation"
-- "likely representing pneumonia" → "diagnostic of pneumonia in this clinical context"
-- "no evidence of" → "absence of"
-
 Now produce the output for the report above. Start directly with **IMPRESSION**."""
-
-    else:
-        # Mode B - Full Report (unchanged)
-        prompt = f"""You are a senior radiologist polishing a full radiology report. PRESERVE THE ORIGINAL STRUCTURE EXACTLY.
+        else:
+            prompt = f"""You are a senior radiologist polishing a full radiology report. PRESERVE THE ORIGINAL STRUCTURE EXACTLY.
 
 ORIGINAL REPORT:
 {req.input_text}
@@ -313,26 +515,32 @@ RULES:
 6. Add management implications when appropriate
 
 OUTPUT: Return the COMPLETE report with original structure preserved, only IMPRESSION improved."""
+        output_format = "text"
 
     raw = await call_openai(req.api_key, system, prompt, max_tokens=6000)
 
+    # Parse response using universal parser
+    parsed = await parse_llm_response(
+        raw, 
+        feature_key, 
+        output_format,
+        api_key=req.api_key if req.user_prompt else None,
+        user_prompt=req.user_prompt
+    )
+    
     if req.mode == "a":
-        def parse_report_section(text, label):
-            pattern = rf'\*\*{re.escape(label)}\*\*\s*\n([\s\S]*?)(?=\n\*\*[A-Z]|\Z)'
-            match = re.search(pattern, text, re.IGNORECASE)
-            return match.group(1).strip() if match else ""
-
         result = {
-            "impression":    parse_report_section(raw, "IMPRESSION"),
-            "differentials": parse_report_section(raw, "DIFFERENTIAL DIAGNOSIS"),
-            "feedback":      parse_report_section(raw, "REASONING"),
-            "audit":         parse_report_section(raw, "LANGUAGE UPGRADE AUDIT"),
+            "impression": parsed.get("impression", ""),
+            "differentials": parsed.get("differentials", ""),
+            "feedback": parsed.get("feedback", ""),
+            "audit": parsed.get("audit", ""),
             "raw": raw,
             "saved": False,
             "id": None,
+            "reextracted": parsed.get("_reextracted", False),
         }
     else:
-        # Mode B - unchanged
+        # Mode B - just return raw
         result = {
             "impression": raw,
             "differentials": "",
@@ -341,6 +549,7 @@ OUTPUT: Return the COMPLETE report with original structure preserved, only IMPRE
             "raw": raw,
             "saved": False,
             "id": None,
+            "reextracted": False,
         }
 
     if req.save:
@@ -355,13 +564,12 @@ OUTPUT: Return the COMPLETE report with original structure preserved, only IMPRE
             feedback=result["feedback"],
             raw_response=raw,
             title=req.title or f"{req.subspecialty} · {req.modality}",
+            user_prompt=req.user_prompt,  # Save custom prompt
         ))
         result["saved"] = True
         result["id"] = rid
 
     return result
-
-
 
 @app.get("/reports")
 async def list_reports(user=Depends(get_current_user), skip: int = 0, limit: int = 50):
@@ -423,7 +631,27 @@ DEPTH MINIMUMS (strictly enforced):
 - REPORT: FINDINGS must have ≥4 sentences with specific measurements; IMPRESSION must include surgical recommendation
 """
 
-    prompt = f"""Digest this radiology article/case into a comprehensive teaching digest:
+    feature_key = "paper_digest"
+    
+    # Build prompt with JSON mode if custom prompt is provided
+    if req.user_prompt:
+        template = req.user_prompt
+        if "{{input}}" in template:
+            prompt = template.replace("{{input}}", req.input_text)
+        else:
+            prompt = f"{template}\n\nINPUT TEXT:\n{req.input_text}"
+        
+        # Add JSON wrapper for structured output
+        schema = JSON_SCHEMAS[feature_key]
+        wrapper = JSON_WRAPPER.format(
+            keys=", ".join(f'"{k}"' for k in schema.keys()),
+            field_descriptions="\n".join(f'  "{k}": {v}' for k, v in schema.items()),
+        )
+        prompt = prompt + wrapper
+        output_format = "json"
+    else:
+        # Use default prompt
+        prompt = f"""Digest this radiology article/case into a comprehensive teaching digest:
 
 {req.input_text}
 
@@ -497,37 +725,32 @@ Format: plain bullets, no sub-structure needed.
 ---
 
 Produce the full digest now. Do not skip sections. Do not truncate. Be exhaustive."""
+        output_format = "text"
 
     raw = await call_openai(req.api_key, system, prompt, max_tokens=6000)
-    
-    # ========== PUT IT HERE ==========
-    print("="*80)
-    print("AI RAW RESPONSE:")
-    print(raw)
-    print("="*80)
-    print(f"LENGTH: {len(raw)} characters")
-    # =================================
 
-    def parse_section(text, headers):
-        for header in headers:
-            pattern = rf'{header}[:\s]*\n?([\s\S]*?)(?=\n\d+\.|\n\*\*\d+\.|\Z)'
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                return match.group(1).strip()
-        return None
+    # Parse response using universal parser
+    parsed = await parse_llm_response(
+        raw, 
+        feature_key, 
+        output_format,
+        api_key=req.api_key if req.user_prompt else None,
+        user_prompt=req.user_prompt
+    )
 
     result = {
-        "bottom_line":   parse_section(raw, ["BOTTOM LINE"]),
-        "how_to_see_it": parse_section(raw, ["HOW TO SEE IT"]),
-        "the_rules":     parse_section(raw, ["THE RULES"]),
-        "differentials": parse_section(raw, ["DIFFERENTIALS"]),
-        "imaging":       parse_section(raw, ["IMAGING"]),
-        "report":        parse_section(raw, ["REPORT"]),
-        "dont_miss":     parse_section(raw, ["DON'T MISS", "DONT MISS"]),
-        "quick_hits":    parse_section(raw, ["QUICK HITS"]),
+        "bottom_line": parsed.get("bottom_line", ""),
+        "how_to_see_it": parsed.get("how_to_see_it", ""),
+        "the_rules": parsed.get("the_rules", ""),
+        "differentials": parsed.get("differentials", ""),
+        "imaging": parsed.get("imaging", ""),
+        "report": parsed.get("report", ""),
+        "dont_miss": parsed.get("dont_miss", ""),
+        "quick_hits": parsed.get("quick_hits", ""),
         "raw": raw,
         "saved": False,
         "id": None,
+        "reextracted": parsed.get("_reextracted", False),
     }
 
     if req.save:
@@ -539,14 +762,12 @@ Produce the full digest now. Do not skip sections. Do not truncate. Be exhaustiv
             findings=result["the_rules"],
             implications=result["dont_miss"],
             raw_response=raw,
+            user_prompt=req.user_prompt,  # Save custom prompt
         ))
         result["saved"] = True
         result["id"] = pid
-        
-        
 
     return result
-
 
 @app.get("/papers")
 async def list_papers(user=Depends(get_current_user), skip: int = 0, limit: int = 50):
@@ -577,10 +798,8 @@ async def delete_paper(paper_id: int, user=Depends(get_current_user)):
 async def health():
     return {"status": "ok", "service": "radiology-coach-api"}
 
-
-
+# ─── STATIC FILES ────────────────────────────────────────────────────────────
 from fastapi.staticfiles import StaticFiles
-import os
 
 # Serve frontend files
 frontend_path = os.path.join(os.path.dirname(__file__), "frontend")
@@ -589,14 +808,10 @@ if os.path.exists(frontend_path):
     print(f"✅ Frontend mounted at / from {frontend_path}")
 else:
     print(f"❌ Frontend not found at {frontend_path}")
-    # Also check if frontend is at different location
     if os.path.exists("/app/frontend"):
         app.mount("/", StaticFiles(directory="/app/frontend", html=True), name="frontend")
         print("✅ Frontend mounted from /app/frontend")
-        
-        
-        
-        
+
 # ─── DEBUG ENDPOINT (remove after testing) ───────────────────────────────────
 @app.post("/debug/digest-raw")
 async def debug_digest_raw(req: DigestRequest, user=Depends(get_current_user)):
