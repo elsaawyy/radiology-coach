@@ -250,27 +250,39 @@ async def call_openai(
 
 # ─── PARSING HELPERS (ENHANCED WITH ALIASES) ─────────────────────────────────
 def parse_section(text: str, labels: list) -> str:
-    """Parse section with multiple label aliases."""
+    """Parse section with multiple label aliases — strips header from content."""
     for label in labels:
-        # Look for markdown headers (## 1. LABEL or **LABEL** or LABEL:)
         patterns = [
-            rf'##\s*\d+\.\s*{re.escape(label)}[\s\S]*?(?=\n##\s*\d+\.|\n\*\*|$)',
-            rf'\*\*{re.escape(label)}\*\*[\s\S]*?(?=\n\*\*|$)',
-            rf'{re.escape(label)}[:\s]*([\s\S]*?)(?=\n[A-Z#]|\Z)'
+            # Numbered bold: 1. **LABEL** or **1. LABEL**
+            rf'\d+\.\s*\*\*{re.escape(label)}\*\*\s*\n([\s\S]*?)(?=\n\d+\.\s*\*\*[A-Z]|\n\*\*[A-Z]|\Z)',
+            # Bold only: **LABEL**
+            rf'\*\*{re.escape(label)}\*\*\s*\n([\s\S]*?)(?=\n\*\*[A-Z]|\n\d+\.\s*\*\*|\Z)',
+            # Plain: LABEL:
+            rf'{re.escape(label)}[:\s]*\n([\s\S]*?)(?=\n[A-Z#]|\Z)',
         ]
         for pattern in patterns:
             m = re.search(pattern, text, re.IGNORECASE)
             if m:
-                return m.group(0).strip() if m.group(0) else m.group(1).strip() if m.group(1) else ""
+                # Get the content group and clean it
+                content = m.group(1).strip()
+                # Remove leading/trailing --- dividers
+                content = re.sub(r'^---\s*', '', content).strip()
+                content = re.sub(r'\s*---$', '', content).strip()
+                return content
     return ""
 
+
 def parse_report_section(text: str, labels: list) -> str:
-    """Parse report section with multiple label aliases."""
+    """Parse report section — strips header from content."""
     for label in labels:
         pattern = rf'\*{{0,2}}{re.escape(label)}\*{{0,2}}[:\s]*\n([\s\S]*?)(?=\n\*{{0,2}}[A-Z]|\Z)'
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
-            return match.group(1).strip()
+            content = match.group(1).strip()
+            # Remove --- dividers
+            content = re.sub(r'^---\s*', '', content).strip()
+            content = re.sub(r'\s*---$', '', content).strip()
+            return content
     return ""
 
 # ─── JSON SCHEMAS FOR STRUCTURED PARSING ─────────────────────────────────────
@@ -737,10 +749,27 @@ Include report-ready phrasing where applicable.
 ---
 
 **REPORT**
-Write a complete ready-to-paste attending-level radiology report.
-FINDINGS: 3-5 sentences. Include location, measurements, tissue characteristics, secondary signs.
-IMPRESSION: 2-3 sentences. State diagnosis and direct management recommendation.
-Use decisive, non-hedging language throughout.
+THIS SECTION IS MANDATORY. You MUST write a complete report. Do not skip this section.
+Write a ready-to-paste attending-level radiology report for this pathology.
+
+FINDINGS:
+Write 4-5 sentences. Include: anatomical location, size/measurement, 
+tissue signal characteristics, secondary signs, what is absent.
+
+IMPRESSION:
+Write 2-3 sentences. State the diagnosis, severity/grade, 
+and direct management recommendation. No hedging language.
+
+Example format:
+FINDINGS:
+There is complete discontinuity of the Achilles tendon at the 
+myotendinous junction with a 3.2 cm gap and proximal retraction 
+of the tendon stump. Increased T2 signal surrounds the tear site 
+consistent with acute hemorrhage and edema...
+
+IMPRESSION:
+Complete Achilles tendon rupture with 3.2 cm gap. 
+Surgical repair is recommended.
 
 ---
 

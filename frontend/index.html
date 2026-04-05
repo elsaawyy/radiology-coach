@@ -990,7 +990,14 @@ async function generateDigest() {
 
         const container = document.getElementById('d-sections-container');
         container.innerHTML = sections.map((s, i) => {
-            const content = data[s.key] || '—';
+            // Clean header artifacts and dividers from content
+          let content = data[s.key] || '—';
+          content = content
+            .replace(/^\*\*[A-Z\s]+\*\*\s*/gm, '')   // remove **HEADER** lines
+            .replace(/^---+\s*/gm, '')                  // remove --- dividers
+            .replace(/\s*---+$/gm, '')                  // remove trailing ---
+            .trim();
+          if (!content) content = '—';
             return `${i > 0 ? '<div class="divider"></div>' : ''}
                 <div class="result-section">
                     <div class="result-tag" style="color:${s.color}">${s.label}</div>
