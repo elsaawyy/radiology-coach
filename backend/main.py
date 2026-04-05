@@ -634,32 +634,33 @@ async def delete_report(report_id: int, user=Depends(get_current_user)):
 # ─── PAPER DIGEST ────────────────────────────────────────────────────────────
 @app.post("/papers/digest")
 async def generate_digest(req: DigestRequest, user=Depends(get_current_user)):
-    system = """You are a US-trained senior radiology attending at final readout level, writing for a radiology fellow preparing for boards and clinical practice.
+    system = """You are an elite radiology-focused clinical summarizer, trained at a top academic center.
+Your job is to convert long articles into high-yield, decision-focused summaries for a radiology fellow. 
+The goal is rapid pattern recognition, reporting accuracy, and clinical relevance.
 
-MISSION: Produce the most detailed, clinically dense, surgically actionable digest possible.
+CORE PRIORITY:
+Extract and prioritize information that directly impacts:
+- Imaging interpretation
+- Differential diagnosis
+- Reporting language
+- Clinical management decisions
 
-NON-NEGOTIABLE RULES:
-- Every number → threshold + surgical implication (no orphan numbers)
-- Every verb → surgical action (repair, reconstruct, augment, debride, fuse, resect...)
-- Every bullet → minimum 1 full sentence, not a fragment
-- 🔑 = single most decision-driving fact per section
-- 🟢 = most likely, ⚪ = alternative, 🔴 = critical miss / cannot miss diagnosis
-- NEVER use vague language: no "may suggest", "can indicate", "possible" — use exact thresholds
-- If source text is sparse, extrapolate from established radiology/surgical literature
-- Aim for MAXIMUM clinical density. Longer is better. Do not summarize — TEACH.
+Writing style:
+- High signal, zero fluff
+- Structured like an attending teaching a fellow
+- Clear, decisive, non-redundant
+- Use radiology terminology appropriately
+- Avoid vague phrases (e.g., "may represent" unless necessary)
 
-DEPTH MINIMUMS (strictly enforced):
-- HOW TO SEE IT: minimum 7 bullets
-- THE RULES: minimum 6 threshold → action → label lines
-- DIFFERENTIALS: minimum 6 rows (1x 🟢, 4x ⚪, 1x 🔴)
-- IMAGING: minimum 5 bullets (one per modality/sequence)
-- DON'T MISS: minimum 5 pitfalls
-- QUICK HITS: minimum 8 facts
-- REPORT: FINDINGS must have ≥4 sentences with specific measurements; IMPRESSION must include surgical recommendation
-"""
+RULES:
+- Do NOT summarize everything — prioritize what impacts diagnosis and management
+- Do NOT restate obvious background information
+- Do NOT include long anatomy sections unless clinically relevant
+- Convert descriptive text into pattern recognition
+- If the article is weak or overly descriptive, explicitly compress it to what matters clinically"""
 
     feature_key = "paper_digest"
-    
+
     # Build prompt with JSON mode if custom prompt is provided
     if req.user_prompt:
         template = req.user_prompt
@@ -667,7 +668,7 @@ DEPTH MINIMUMS (strictly enforced):
             prompt = template.replace("{{input}}", req.input_text)
         else:
             prompt = f"{template}\n\nINPUT TEXT:\n{req.input_text}"
-        
+
         # Add JSON wrapper for structured output
         schema = JSON_SCHEMAS[feature_key]
         wrapper = JSON_WRAPPER.format(
@@ -677,105 +678,113 @@ DEPTH MINIMUMS (strictly enforced):
         prompt = prompt + wrapper
         output_format = "json"
     else:
-        # Use default prompt
-        prompt = f"""Digest this radiology article/case into a comprehensive teaching digest:
+        # NEW DEFAULT PROMPT
+        prompt = f"""You are an elite radiology-focused clinical summarizer trained at a top academic center.
+Convert the following article into a high-yield, decision-focused summary for a radiology fellow.
+Goal: rapid pattern recognition, reporting accuracy, and clinical relevance.
+High signal, zero fluff. Structured like an attending teaching a fellow.
 
+ARTICLE:
 {req.input_text}
 
-OUTPUT STRUCTURE — use EXACTLY these 8 sections, numbered and bolded. Follow every instruction per section precisely.
+OUTPUT STRUCTURE — use EXACTLY these 8 sections with EXACTLY these bold headers.
+Do not rename, skip, reorder, or merge any section.
 
 ---
 
-1. **BOTTOM LINE**
-Write 2–3 sentences maximum. Format:
-- Sentence 1: [Key pathology] with [specific measurement] → [surgical decision].
-- Sentence 2: [Most important threshold] that changes management.
-- Sentence 3 (optional): [Most common clinical pitfall].
+**BOTTOM LINE**
+1-2 sentences maximum.
+Why this topic matters for radiology practice and what to remember on call or boards.
+Be decisive. No fluff. No vague language.
 
 ---
 
-2. **HOW TO SEE IT**
-Minimum 7 bullets. Each bullet MUST follow this format:
-- [Sign name]: [how to identify it on imaging] → [surgical or clinical implication]
-Mark 🔑 on the single most decision-driving sign.
-Include: morphology, measurement technique, location, tissue quality signs, secondary signs, acuity markers, chronicity markers.
+**HOW TO SEE IT**
+Modality-specific imaging findings (MRI/CT/XR/US).
+Include hallmark features with exact descriptions.
+Include critical negatives when relevant.
+Minimum 5 bullets. Format each bullet exactly:
+- [Modality/Sign]: [how to identify it] → [what it means clinically]
+Mark 🔑 on the single most decision-driving finding.
 
 ---
 
-3. **THE RULES**
-Minimum 6 lines. Each line MUST follow EXACTLY this format:
-- [Measurement/finding] [threshold] → [surgical action] → [outcome/label]
-Cover the full spectrum from mild to severe. Mark 🔑 on the rule that most commonly changes surgical approach.
-Example format: Gap <2 cm → primary end-to-end repair → standard approach 🔑
+**THE RULES**
+Findings that change management. Thresholds that matter.
+Surgical vs non-surgical implications.
+Minimum 5 lines. Format each line exactly:
+- [Measurement/finding] [threshold] → [management action] → [outcome]
+Mark 🔑 on the rule that most commonly changes clinical approach.
+Include imaging classification systems and size thresholds when applicable.
 
 ---
 
-4. **DIFFERENTIALS**
+**DIFFERENTIALS**
+Only include if clinically relevant. Prioritized list, 2-4 diagnoses maximum.
+Include specific imaging discriminators for each.
 Markdown table with EXACTLY these columns: | Diagnosis | Key Discriminator | Next Step |
-Minimum 6 rows. Use 🟢 for most likely (1 row), ⚪ for alternatives (4+ rows), 🔴 for critical miss (1 row).
-Each discriminator must be a SPECIFIC imaging finding, not a generic description.
-Each next step must be a SURGICAL or MANAGEMENT action.
+Use 🟢 for most likely, ⚪ for alternatives, 🔴 for critical miss.
 
 ---
 
-5. **IMAGING**
-Minimum 5 bullets. Each bullet MUST follow this format:
-- [Modality/Sequence] → [specific finding it shows] → [surgical implication]
-Cover: MRI sequences (T1, T2, T2 FS, STIR, contrast), ultrasound, CT, X-ray if relevant.
-Include what each sequence adds that others cannot.
+**IMAGING**
+What each modality or sequence contributes specifically.
+What it shows that others cannot.
+Minimum 4 bullets. Format each bullet exactly:
+- [Modality/Sequence] → [specific finding] → [clinical implication]
+Include report-ready phrasing where applicable.
 
 ---
 
-6. **REPORT**
-Write a complete, ready-to-paste attending-level radiology report.
-
-FINDINGS:
-Write 4–6 sentences. Include: location (precise anatomy), size/gap measurement, tissue quality, secondary signs, comparison if relevant.
-
-IMPRESSION:
-Write 2–3 sentences. State diagnosis, severity grade, and direct surgical recommendation.
+**REPORT**
+Write a complete ready-to-paste attending-level radiology report.
+FINDINGS: 3-5 sentences. Include location, measurements, tissue characteristics, secondary signs.
+IMPRESSION: 2-3 sentences. State diagnosis and direct management recommendation.
+Use decisive, non-hedging language throughout.
 
 ---
 
-7. **DON'T MISS**
-Minimum 5 bullets. Each bullet MUST follow this format:
-- [Specific error] → [consequence] → [how to avoid it]
-Focus on errors that lead to wrong surgery, delayed treatment, or patient harm.
+**DON'T MISS**
+Common misinterpretations, mimics, and technical traps.
+Minimum 4 bullets. Format each bullet exactly:
+- [Specific pitfall] → [consequence] → [how to avoid it]
+Focus on errors that lead to wrong diagnosis or delayed management.
 
 ---
 
-8. **QUICK HITS**
-Minimum 8 bullets. Short, dense, board-style facts.
-Each bullet = one memorable fact with a number or threshold.
-Format: plain bullets, no sub-structure needed.
+**QUICK HITS**
+What to remember on call and boards.
+Minimum 6 bullets. Each bullet = one memorable fact with a number, threshold, or classification.
+Format: plain bullets, board-style facts only.
 
 ---
 
-Produce the full digest now. Do not skip sections. Do not truncate. Be exhaustive."""
+Produce the full digest now. Do not skip any section. Do not truncate.
+Prioritize what impacts diagnosis and management. Zero fluff."""
         output_format = "text"
 
     raw = await call_openai(req.api_key, system, prompt, max_tokens=6000)
 
     # Parse response using universal parser
     parsed = await parse_llm_response(
-        raw, 
-        feature_key, 
+        raw,
+        feature_key,
         output_format,
         api_key=req.api_key if req.user_prompt else None,
         user_prompt=req.user_prompt
     )
-    
+
     parsed = stringify_parsed_values(parsed)
 
     result = {
-        "bottom_line": parsed.get("bottom_line", ""),
+        "bottom_line":   parsed.get("bottom_line", ""),
         "how_to_see_it": parsed.get("how_to_see_it", ""),
-        "the_rules": parsed.get("the_rules", ""),
+        "the_rules":     parsed.get("the_rules", ""),
         "differentials": parsed.get("differentials", ""),
-        "imaging": parsed.get("imaging", ""),
-        "report": parsed.get("report", ""),
-        "dont_miss": parsed.get("dont_miss", ""),
-        "quick_hits": parsed.get("quick_hits", ""),
+        "imaging":       parsed.get("imaging", ""),
+        "report":        parsed.get("report", ""),
+        "dont_miss":     parsed.get("dont_miss", ""),
+        "quick_hits":    parsed.get("quick_hits", ""),
         "raw": raw,
         "saved": False,
         "id": None,
@@ -791,12 +800,13 @@ Produce the full digest now. Do not skip sections. Do not truncate. Be exhaustiv
             findings=result["the_rules"],
             implications=result["dont_miss"],
             raw_response=raw,
-            user_prompt=req.user_prompt,  # Save custom prompt
+            user_prompt=req.user_prompt,
         ))
         result["saved"] = True
         result["id"] = pid
 
     return result
+
 
 @app.get("/papers")
 async def list_papers(user=Depends(get_current_user), skip: int = 0, limit: int = 50):
