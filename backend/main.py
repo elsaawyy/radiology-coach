@@ -371,6 +371,31 @@ def parse_quality_score(parsed: dict, feature_key: str) -> dict:
         "degraded": score < 0.5,
     }
 
+def stringify_parsed_values(parsed: dict) -> dict:
+    """
+    Ensure all values in the parsed dict are strings, not lists or dicts.
+    The AI sometimes returns arrays for fields like 'differentials'.
+    The database expects plain text for all columns.
+    """
+    result = {}
+    for key, value in parsed.items():
+        if value is None:
+            result[key] = ""
+        elif isinstance(value, list):
+            # Join list items with newlines — preserves readability
+            result[key] = "\n".join(
+                str(item) if not isinstance(item, dict) 
+                else "\n".join(f"{k}: {v}" for k, v in item.items())
+                for item in value
+            )
+        elif isinstance(value, dict):
+            # Convert dict to readable key: value lines
+            result[key] = "\n".join(f"{k}: {v}" for k, v in value.items())
+        else:
+            result[key] = str(value)
+    return result
+
+
 async def parse_llm_response(
     raw: str, 
     feature_key: str, 
@@ -527,6 +552,8 @@ OUTPUT: Return the COMPLETE report with original structure preserved, only IMPRE
         api_key=req.api_key if req.user_prompt else None,
         user_prompt=req.user_prompt
     )
+    
+    parsed = stringify_parsed_values(parsed)
     
     if req.mode == "a":
         result = {
@@ -737,6 +764,8 @@ Produce the full digest now. Do not skip sections. Do not truncate. Be exhaustiv
         api_key=req.api_key if req.user_prompt else None,
         user_prompt=req.user_prompt
     )
+    
+    parsed = stringify_parsed_values(parsed)
 
     result = {
         "bottom_line": parsed.get("bottom_line", ""),
