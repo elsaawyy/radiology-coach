@@ -704,6 +704,34 @@ let digestMode = 'title';
 let libData = { reports: [], papers: [] };
 let _toastTimer;
 
+
+
+// Extract section content from raw AI response
+function extractSectionFromRaw(raw, sectionNumber, sectionName) {
+    if (!raw) return null;
+    
+    // Pattern to match: "4. **What Actually Matters (Decision Drivers)**" and capture content until next section
+    const patterns = [
+        // Numbered bold with optional parentheses content
+        new RegExp(`${sectionNumber}\\.\\s*\\*\\*${sectionName}[^*]*\\*\\*\\s*\\n([\\s\\S]*?)(?=\\n\\d+\\.\\s*\\*\\*|$)`, 'i'),
+        // Bold header only
+        new RegExp(`\\*\\*${sectionName}[^*]*\\*\\*\\s*\\n([\\s\\S]*?)(?=\\n\\d+\\.\\s*\\*\\*|\\n\\*\\*[A-Z]|$)`, 'i'),
+        // Plain header with colon
+        new RegExp(`${sectionName}[：:]\\s*\\n([\\s\\S]*?)(?=\\n\\d+\\.\\s*\\*\\*|\\n\\*\\*[A-Z]|$)`, 'i'),
+    ];
+    
+    for (const pattern of patterns) {
+        const match = raw.match(pattern);
+        if (match && match[1] && match[1].trim()) {
+            let content = match[1].trim();
+            // Remove markdown formatting artifacts
+            content = content.replace(/^---+\s*/gm, '');
+            content = content.replace(/\s*---+$/gm, '');
+            return content;
+        }
+    }
+    return null;
+}
 // ─────────────────────────────────────────────────────────────────────────────
 // INIT
 window.addEventListener('DOMContentLoaded', () => {
@@ -977,26 +1005,40 @@ async function generateDigest() {
             user_prompt: userPrompt,
         });
 
-const sections = [
-    { key: 'why_this_matters',      label: '📌 Why This Matters',      color: 'var(--accent)' },
-    { key: 'core_concept',          label: '🎯 Core Concept',          color: 'var(--green)'  },
-    { key: 'key_imaging_findings',  label: '🔍 Key Imaging Findings',  color: 'var(--amber)'  },
-    { key: 'decision_drivers',      label: '⚡ Decision Drivers',      color: 'var(--violet)' },
-    { key: 'differentials',         label: '🔀 Differential Diagnosis', color: 'var(--accent)' },
-    { key: 'pitfalls',              label: '⚠️ Pitfalls',              color: 'var(--red)'    },
-    { key: 'bottom_line',           label: '📝 Bottom Line',           color: 'var(--green)'  },
-];
+        // Define sections with their section numbers and names for raw extraction
+        const sections = [
+            { key: 'why_this_matters',      num: '1', name: 'Why This Matters',           label: '📌 Why This Matters',      color: 'var(--accent)' },
+            { key: 'core_concept',          num: '2', name: 'Core Concept',                label: '🎯 Core Concept',          color: 'var(--green)'  },
+            { key: 'key_imaging_findings',  num: '3', name: 'Key Imaging Findings',        label: '🔍 Key Imaging Findings',  color: 'var(--amber)'  },
+            { key: 'decision_drivers',      num: '4', name: 'What Actually Matters',       label: '⚡ Decision Drivers',      color: 'var(--violet)' },
+            { key: 'differentials',         num: '5', name: 'Differential Diagnosis',      label: '🔀 Differential Diagnosis', color: 'var(--accent)' },
+            { key: 'pitfalls',              num: '6', name: 'Pitfalls',                    label: '⚠️ Pitfalls',              color: 'var(--red)'    },
+            { key: 'bottom_line',           num: '7', name: 'Bottom Line',                 label: '📝 Bottom Line',           color: 'var(--green)'  },
+        ];
 
         const container = document.getElementById('d-sections-container');
         container.innerHTML = sections.map((s, i) => {
-            // Clean header artifacts and dividers from content
-          let content = data[s.key] || '—';
-          content = content
-            .replace(/^\*\*[A-Z\s]+\*\*\s*/gm, '')   // remove **HEADER** lines
-            .replace(/^---+\s*/gm, '')                  // remove --- dividers
-            .replace(/\s*---+$/gm, '')                  // remove trailing ---
-            .trim();
-          if (!content) content = '—';
+            // First try to get from parsed data
+            let content = data[s.key];
+            
+            // If empty, extract from raw AI response
+            if (!content || content === '') {
+                const rawContent = extractSectionFromRaw(data.raw, s.num, s.name);
+                if (rawContent) content = rawContent;
+            }
+            
+            // If still empty, show placeholder
+            if (!content || content === '') content = '—';
+            
+            // Clean up content
+            content = content
+                .replace(/^\*\*[A-Z\s]+\*\*\s*/gm, '')
+                .replace(/^---+\s*/gm, '')
+                .replace(/\s*---+$/gm, '')
+                .trim();
+            
+            if (!content) content = '—';
+            
             return `${i > 0 ? '<div class="divider"></div>' : ''}
                 <div class="result-section">
                     <div class="result-tag" style="color:${s.color}">${s.label}</div>
@@ -1027,7 +1069,6 @@ const sections = [
         document.getElementById('d-loading').classList.remove('show');
     }
 }
-
 
 async function saveCurrentDigest() {
     if (!recentDigest || recentDigest.saved) return;
