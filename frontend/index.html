@@ -978,15 +978,14 @@ async function generateDigest() {
         });
 
         const sections = [
-            { key: 'bottom_line',   label: '⚡ Bottom Line',   color: 'var(--accent)' },
-            { key: 'how_to_see_it', label: '🔍 How To See It', color: 'var(--green)'  },
-            { key: 'the_rules',     label: '📏 The Rules',     color: 'var(--amber)'  },
-            { key: 'differentials', label: '🔀 Differentials', color: 'var(--violet)' },
-            { key: 'imaging',       label: '🖥️ Imaging',       color: 'var(--accent)' },
-            { key: 'report',        label: '📋 Report',        color: 'var(--green)'  },
-            { key: 'dont_miss',     label: "🔴 Don't Miss",    color: 'var(--red)'    },
-            { key: 'quick_hits',    label: '⚡ Quick Hits',    color: 'var(--amber)'  },
-        ];
+     { key: 'why_this_matters',      label: '📌 Why This Matters',      color: 'var(--accent)' },
+    { key: 'core_concept',          label: '🎯 Core Concept',          color: 'var(--green)'  },
+    { key: 'key_imaging_findings',  label: '🔍 Key Imaging Findings',  color: 'var(--amber)'  },
+    { key: 'decision_drivers',      label: '⚡ Decision Drivers',      color: 'var(--violet)' },
+    { key: 'differentials',         label: '🔀 Differential Diagnosis', color: 'var(--accent)' },
+    { key: 'pitfalls',              label: '⚠️ Pitfalls',              color: 'var(--red)'    },
+    { key: 'bottom_line',           label: '📝 Bottom Line',           color: 'var(--green)'  },
+];
 
         const container = document.getElementById('d-sections-container');
         container.innerHTML = sections.map((s, i) => {

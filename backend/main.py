@@ -294,14 +294,13 @@ JSON_SCHEMAS = {
         "audit": "Weak phrase → strong replacement pairs, one per line",
     },
     "paper_digest": {
-        "bottom_line": "2-3 sentence summary of the key finding",
-        "how_to_see_it": "Signs with identification and implications",
-        "the_rules": "Measurement thresholds with actions",
-        "differentials": "Table of diagnoses with discriminators",
-        "imaging": "Modality findings with implications",
-        "report": "Complete attending-level radiology report",
-        "dont_miss": "Errors with consequences and avoidance",
-        "quick_hits": "Board-style facts with numbers",
+        "why_this_matters": "1-2 sentences on why this topic affects radiology practice",
+        "core_concept": "The single most important idea",
+        "key_imaging_findings": "Modality-specific findings with hallmark features",
+        "decision_drivers": "Findings that change management with thresholds",
+        "differentials": "Prioritized differentials with discriminators (2-4 max)",
+        "pitfalls": "Common misinterpretations, mimics, and technical traps",
+        "bottom_line": "What to remember on call or boards (1-2 sentences)",
     },
 }
 
@@ -457,14 +456,13 @@ async def parse_llm_response(
         }
     elif feature_key == "paper_digest":
         parsed = {
-            "bottom_line": parse_section(raw, ["BOTTOM LINE", "SUMMARY", "KEY TAKEAWAY", "CORE MESSAGE"]),
-            "how_to_see_it": parse_section(raw, ["HOW TO SEE IT", "IDENTIFICATION", "VISUAL CUES"]),
-            "the_rules": parse_section(raw, ["THE RULES", "RULES", "THRESHOLDS", "DECISION RULES"]),
-            "differentials": parse_section(raw, ["DIFFERENTIALS", "DIFFERENTIAL DIAGNOSIS", "DDX"]),
-            "imaging": parse_section(raw, ["IMAGING", "FINDINGS", "IMAGING FINDINGS"]),
-            "report": parse_section(raw, ["REPORT", "FINAL REPORT", "RADIOLOGY REPORT"]),
-            "dont_miss": parse_section(raw, ["DON'T MISS", "DONT MISS", "PITFALLS", "COMMON ERRORS"]),
-            "quick_hits": parse_section(raw, ["QUICK HITS", "FAST FACTS", "PEARLS", "KEY FACTS", "BOARD FACTS"]),
+            "why_this_matters": parse_section(raw, ["WHY THIS MATTERS", "1. WHY THIS MATTERS"]),
+            "core_concept": parse_section(raw, ["CORE CONCEPT", "2. CORE CONCEPT"]),
+            "key_imaging_findings": parse_section(raw, ["KEY IMAGING FINDINGS", "3. KEY IMAGING FINDINGS"]),
+            "decision_drivers": parse_section(raw, ["WHAT ACTUALLY MATTERS", "DECISION DRIVERS", "4. WHAT ACTUALLY MATTERS"]),
+            "differentials": parse_section(raw, ["DIFFERENTIAL DIAGNOSIS", "5. DIFFERENTIAL DIAGNOSIS"]),
+            "pitfalls": parse_section(raw, ["PITFALLS", "6. PITFALLS"]),
+            "bottom_line": parse_section(raw, ["BOTTOM LINE", "7. BOTTOM LINE"]),
         }
     
     # TRY 3: LLM re-extraction (safety net for custom prompts)
@@ -696,105 +694,71 @@ RULES:
         output_format = "json"
     else:
         # NEW DEFAULT PROMPT
-        prompt = f"""You are an elite radiology-focused clinical summarizer trained at a top academic center.
-Convert the following article into a high-yield, decision-focused summary for a radiology fellow.
-Goal: rapid pattern recognition, reporting accuracy, and clinical relevance.
-High signal, zero fluff. Structured like an attending teaching a fellow.
+        prompt = f"""You are an elite radiology-focused clinical summarizer, trained at a top academic center.
+
+Your job is to convert long articles into high-yield, decision-focused summaries for a radiology fellow. The goal is rapid pattern recognition, reporting accuracy, and clinical relevance.
+
+CORE PRIORITY:
+Extract and prioritize information that directly impacts:
+- Imaging interpretation
+- Differential diagnosis
+- Reporting language
+- Clinical management decisions
+
+Writing style:
+- High signal, zero fluff
+- Structured like an attending teaching a fellow
+- Clear, decisive, non-redundant
+- Use radiology terminology appropriately
+- Avoid vague phrases (e.g., "may represent" unless necessary)
+
+OUTPUT STRUCTURE (STRICT):
+
+1. Why This Matters (1–2 sentences)
+   - Focus on how this topic affects radiology practice or decision-making
+
+2. Core Concept
+   - The single most important idea
+
+3. Key Imaging Findings
+   - Modality-specific (MRI/CT/XR/US)
+   - Include hallmark features
+   - Include critical negatives when relevant
+
+4. What Actually Matters (Decision Drivers)
+   - Findings that change management
+   - Thresholds (e.g., size, location, % tear, signal pattern)
+   - Surgical vs non-surgical implications
+
+5. Differential Diagnosis (only if relevant)
+   - Prioritized (2–4 max)
+   - Include discriminators
+
+6. Pitfalls (High-Yield Misses)
+   - Common misinterpretations
+   - Mimics
+   - Technical traps
+
+7. Bottom Line (1–2 sentences)
+   - What you should remember on call / boards
+
+RULES:
+- Do NOT summarize everything—prioritize what impacts diagnosis and management
+- Do NOT restate obvious background information
+- Do NOT include long anatomy sections unless clinically relevant
+- Convert descriptive text into pattern recognition
+- If the article is weak or overly descriptive, explicitly compress it to what matters clinically
+
+OPTIONAL (when applicable):
+- Include imaging thresholds or classification systems
+- Include "report-ready phrasing"
+
+Make the output feel like a senior attending dictating a high-yield teaching readout.
 
 ARTICLE:
 {req.input_text}
 
-OUTPUT STRUCTURE — use EXACTLY these 8 sections with EXACTLY these bold headers.
-Do not rename, skip, reorder, or merge any section.
-
----
-
-**BOTTOM LINE**
-1-2 sentences maximum.
-Why this topic matters for radiology practice and what to remember on call or boards.
-Be decisive. No fluff. No vague language.
-
----
-
-**HOW TO SEE IT**
-Modality-specific imaging findings (MRI/CT/XR/US).
-Include hallmark features with exact descriptions.
-Include critical negatives when relevant.
-Minimum 5 bullets. Format each bullet exactly:
-- [Modality/Sign]: [how to identify it] → [what it means clinically]
-Mark 🔑 on the single most decision-driving finding.
-
----
-
-**THE RULES**
-Findings that change management. Thresholds that matter.
-Surgical vs non-surgical implications.
-Minimum 5 lines. Format each line exactly:
-- [Measurement/finding] [threshold] → [management action] → [outcome]
-Mark 🔑 on the rule that most commonly changes clinical approach.
-Include imaging classification systems and size thresholds when applicable.
-
----
-
-**DIFFERENTIALS**
-Only include if clinically relevant. Prioritized list, 2-4 diagnoses maximum.
-Include specific imaging discriminators for each.
-Markdown table with EXACTLY these columns: | Diagnosis | Key Discriminator | Next Step |
-Use 🟢 for most likely, ⚪ for alternatives, 🔴 for critical miss.
-
----
-
-**IMAGING**
-What each modality or sequence contributes specifically.
-What it shows that others cannot.
-Minimum 4 bullets. Format each bullet exactly:
-- [Modality/Sequence] → [specific finding] → [clinical implication]
-Include report-ready phrasing where applicable.
-
----
-
-**REPORT**
-THIS SECTION IS MANDATORY. You MUST write a complete report. Do not skip this section.
-Write a ready-to-paste attending-level radiology report for this pathology.
-
-FINDINGS:
-Write 4-5 sentences. Include: anatomical location, size/measurement, 
-tissue signal characteristics, secondary signs, what is absent.
-
-IMPRESSION:
-Write 2-3 sentences. State the diagnosis, severity/grade, 
-and direct management recommendation. No hedging language.
-
-Example format:
-FINDINGS:
-There is complete discontinuity of the Achilles tendon at the 
-myotendinous junction with a 3.2 cm gap and proximal retraction 
-of the tendon stump. Increased T2 signal surrounds the tear site 
-consistent with acute hemorrhage and edema...
-
-IMPRESSION:
-Complete Achilles tendon rupture with 3.2 cm gap. 
-Surgical repair is recommended.
-
----
-
-**DON'T MISS**
-Common misinterpretations, mimics, and technical traps.
-Minimum 4 bullets. Format each bullet exactly:
-- [Specific pitfall] → [consequence] → [how to avoid it]
-Focus on errors that lead to wrong diagnosis or delayed management.
-
----
-
-**QUICK HITS**
-What to remember on call and boards.
-Minimum 6 bullets. Each bullet = one memorable fact with a number, threshold, or classification.
-Format: plain bullets, board-style facts only.
-
----
-
-Produce the full digest now. Do not skip any section. Do not truncate.
-Prioritize what impacts diagnosis and management. Zero fluff."""
+Produce the digest now using the exact 7-section structure above. Do not skip any section."""
         output_format = "text"
 
     raw = await call_openai(req.api_key, system, prompt, max_tokens=6000)
@@ -811,14 +775,13 @@ Prioritize what impacts diagnosis and management. Zero fluff."""
     parsed = stringify_parsed_values(parsed)
 
     result = {
-        "bottom_line":   parsed.get("bottom_line", ""),
-        "how_to_see_it": parsed.get("how_to_see_it", ""),
-        "the_rules":     parsed.get("the_rules", ""),
+        "why_this_matters": parsed.get("why_this_matters", ""),
+        "core_concept": parsed.get("core_concept", ""),
+        "key_imaging_findings": parsed.get("key_imaging_findings", ""),
+        "decision_drivers": parsed.get("decision_drivers", ""),
         "differentials": parsed.get("differentials", ""),
-        "imaging":       parsed.get("imaging", ""),
-        "report":        parsed.get("report", ""),
-        "dont_miss":     parsed.get("dont_miss", ""),
-        "quick_hits":    parsed.get("quick_hits", ""),
+        "pitfalls": parsed.get("pitfalls", ""),
+        "bottom_line": parsed.get("bottom_line", ""),
         "raw": raw,
         "saved": False,
         "id": None,
@@ -830,9 +793,9 @@ Prioritize what impacts diagnosis and management. Zero fluff."""
             user_id=user["id"],
             input_mode=req.input_mode,
             title=req.input_text[:120],
-            summary=result["bottom_line"],
-            findings=result["the_rules"],
-            implications=result["dont_miss"],
+            summary=result["bottom_line"],           # Bottom line
+            findings=result["decision_drivers"],     # Decision drivers
+            implications=result["pitfalls"],         # Pitfalls
             raw_response=raw,
             user_prompt=req.user_prompt,
         ))
@@ -840,7 +803,6 @@ Prioritize what impacts diagnosis and management. Zero fluff."""
         result["id"] = pid
 
     return result
-
 
 @app.get("/papers")
 async def list_papers(user=Depends(get_current_user), skip: int = 0, limit: int = 50):
