@@ -456,13 +456,13 @@ async def parse_llm_response(
         }
     elif feature_key == "paper_digest":
         parsed = {
-            "why_this_matters": parse_section(raw, ["WHY THIS MATTERS", "1. WHY THIS MATTERS"]),
-            "core_concept": parse_section(raw, ["CORE CONCEPT", "2. CORE CONCEPT"]),
-            "key_imaging_findings": parse_section(raw, ["KEY IMAGING FINDINGS", "3. KEY IMAGING FINDINGS"]),
-            "decision_drivers": parse_section(raw, ["WHAT ACTUALLY MATTERS", "DECISION DRIVERS", "4. WHAT ACTUALLY MATTERS"]),
-            "differentials": parse_section(raw, ["DIFFERENTIAL DIAGNOSIS", "5. DIFFERENTIAL DIAGNOSIS"]),
-            "pitfalls": parse_section(raw, ["PITFALLS", "6. PITFALLS"]),
-            "bottom_line": parse_section(raw, ["BOTTOM LINE", "7. BOTTOM LINE"]),
+            "why_this_matters": parse_section(raw, ["WHY THIS MATTERS", "1. WHY THIS MATTERS", "Why This Matters"]),
+            "core_concept": parse_section(raw, ["CORE CONCEPT", "2. CORE CONCEPT", "Core Concept"]),
+            "key_imaging_findings": parse_section(raw, ["KEY IMAGING FINDINGS", "3. KEY IMAGING FINDINGS", "Key Imaging Findings"]),
+            "decision_drivers": parse_section(raw, ["WHAT ACTUALLY MATTERS", "DECISION DRIVERS", "4. WHAT ACTUALLY MATTERS", "Decision Drivers", "What Actually Matters"]),
+            "differentials": parse_section(raw, ["DIFFERENTIAL DIAGNOSIS", "5. DIFFERENTIAL DIAGNOSIS", "Differential Diagnosis"]),
+            "pitfalls": parse_section(raw, ["PITFALLS", "6. PITFALLS", "Pitfalls", "HIGH-YIELD MISSES"]),
+            "bottom_line": parse_section(raw, ["BOTTOM LINE", "7. BOTTOM LINE", "Bottom Line"]),
         }
     
     # TRY 3: LLM re-extraction (safety net for custom prompts)
