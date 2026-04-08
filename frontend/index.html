@@ -681,7 +681,10 @@ textarea::placeholder { color:var(--text3); }
           <div class="section-head" style="margin-bottom:4px">Manual Library</div>
           <div style="font-size:12px;color:var(--text3);font-family:var(--mono)">Your personally saved reports &amp; papers</div>
         </div>
-        <button class="btn-primary" onclick="openManualSaveModal()" style="padding:8px 18px;font-size:12px">+ Save New</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-sm" onclick="exportAllManualToWord()">📄 Export All to Word</button>
+          <button class="btn-primary" onclick="openManualSaveModal()" style="padding:8px 18px;font-size:12px">+ Save New</button>
+        </div>
       </div>
 
       <div class="lib-tabs" style="margin-bottom:16px">
@@ -1660,6 +1663,7 @@ function renderManualLib() {
               </div>
             </div>
             <div class="lib-card-btns" onclick="event.stopPropagation()">
+              <button class="btn-sm" onclick="exportManualItemById(${item.id},'${manualTab}')" title="Export to Word">📄</button>
               <button class="btn-sm" onclick="openManualEdit(${item.id},'${manualTab}')" title="Edit">✏</button>
               <button class="btn-sm del" onclick="deleteManualItem(${item.id},'${manualTab}')" title="Delete">🗑</button>
             </div>
@@ -1688,9 +1692,10 @@ function openManualItem(id, type) {
             <div class="modal-lbl">Content</div>
             <div class="modal-val" style="white-space:pre-wrap;max-height:55vh;overflow-y:auto">${esc(item.content)}</div>
         </div>
-        <div style="display:flex;gap:8px;margin-top:4px">
+        <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
             <button class="btn-ghost" style="flex:1" onclick="closeManualView()">Close</button>
-            <button class="btn-primary" style="flex:1" onclick="closeManualView();openManualEdit(${item.id},'${type}')">✏ Edit</button>
+            <button class="btn-ghost" style="flex:1" onclick="closeManualView();openManualEdit(${item.id},'${type}')">✏ Edit</button>
+            <button class="btn-primary" style="flex:2" onclick="closeManualView();exportManualItemById(${item.id},'${type}')">📄 Export to Word</button>
         </div>`;
     document.getElementById('manual-view-ov').classList.add('show');
 }
@@ -1786,6 +1791,285 @@ async function deleteManualItem(id, type) {
         else manualData.papers = manualData.papers.filter(i => i.id !== id);
         updateManualCount(); renderManualLib(); toast('Deleted ✓', 'ok');
     } catch (e) { toast('Error: ' + e.message, 'err'); }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+// MANUAL LIBRARY — WORD EXPORT
+function exportManualItemById(id, type) {
+    const item = (type === 'reports' ? manualData.reports : manualData.papers).find(i => i.id === id);
+    if (item) exportManualToWord(item, type);
+}
+
+function exportManualToWord(item, type) {
+    const isReport = type === 'reports';
+    const title    = item.title || (isReport ? 'Radiology Report' : 'Paper / Article');
+    const category = item.category || 'OTHERS';
+    const date     = item.created_at
+        ? new Date(item.created_at).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' })
+        : new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+    const exportedAt = new Date().toLocaleString();
+    const tags     = item.tags ? item.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+    const sourceUrl = item.source_url || '';
+
+    // Category colours (Word-safe hex)
+    const catMeta = {
+        NEURO:  { hex: '#4d9fff', label: 'NEURO',  icon: '🧠' },
+        MSK:    { hex: '#3ecf8e', label: 'MSK',    icon: '🦴' },
+        BODY:   { hex: '#f0b429', label: 'BODY',   icon: '🫀' },
+        OTHERS: { hex: '#7a8fb5', label: 'OTHERS', icon: '📂' },
+    };
+    const cm = catMeta[category] || catMeta.OTHERS;
+
+    // Convert plain-text content to readable HTML paragraphs
+    function contentToHtml(raw) {
+        if (!raw) return '<p>—</p>';
+        // Preserve existing markdown-like formatting
+        let html = markdownToHtml(raw);
+        // Wrap bare line blocks in paragraphs if not already tagged
+        if (!html.includes('<p') && !html.includes('<li') && !html.includes('<h')) {
+            html = html.split(/\n\n+/).map(b => `<p>${b.replace(/\n/g,'<br>')}</p>`).join('');
+        }
+        return html;
+    }
+
+    const tagsHtml = tags.length
+        ? `<p style="margin:4px 0 0 0"><span style="font-size:10pt;color:#555">Tags: </span>${tags.map(t=>`<span style="display:inline-block;padding:1px 8px;border:1px solid #ccc;border-radius:10px;font-size:9pt;color:#555;margin:2px 3px">${escapeHtml(t)}</span>`).join(' ')}</p>`
+        : '';
+
+    const sourceHtml = sourceUrl
+        ? `<p style="margin:4px 0 0 0;font-size:10pt;color:#4d9fff">🔗 <a href="${escapeHtml(sourceUrl)}" style="color:#4d9fff">${escapeHtml(sourceUrl)}</a></p>`
+        : '';
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>${escapeHtml(title)}</title>
+<style>
+  /* ── Page layout ── */
+  @page { margin: 2.54cm; }
+  body {
+    font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+    font-size: 11pt;
+    color: #1a1a2e;
+    line-height: 1.65;
+    margin: 0; padding: 0;
+  }
+
+  /* ── Cover banner ── */
+  .cover {
+    background: linear-gradient(135deg, ${cm.hex} 0%, #1a1a2e 100%);
+    color: #ffffff;
+    padding: 32px 36px 28px;
+    border-radius: 0 0 12px 12px;
+    margin-bottom: 28px;
+  }
+  .cover-super {
+    font-size: 9pt;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    opacity: 0.75;
+    margin-bottom: 8px;
+  }
+  .cover-title {
+    font-size: 20pt;
+    font-weight: 700;
+    line-height: 1.25;
+    margin-bottom: 14px;
+  }
+  .cover-meta {
+    font-size: 10pt;
+    opacity: 0.85;
+    display: flex;
+    gap: 22px;
+    flex-wrap: wrap;
+  }
+  .cover-badge {
+    display: inline-block;
+    background: rgba(255,255,255,.2);
+    border: 1px solid rgba(255,255,255,.35);
+    border-radius: 20px;
+    padding: 3px 14px;
+    font-size: 10pt;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+
+  /* ── Meta bar ── */
+  .meta-bar {
+    background: #f5f7fb;
+    border: 1px solid #e0e4ed;
+    border-radius: 8px;
+    padding: 12px 18px;
+    margin-bottom: 24px;
+    font-size: 10pt;
+    color: #555;
+  }
+  .meta-bar table { width: 100%; border-collapse: collapse; }
+  .meta-bar td { padding: 3px 6px; vertical-align: top; }
+  .meta-bar td:first-child { color: #888; font-weight: 600; width: 110px; white-space: nowrap; }
+
+  /* ── Section heading ── */
+  .section-label {
+    font-size: 8.5pt;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: ${cm.hex};
+    border-left: 4px solid ${cm.hex};
+    padding: 3px 0 3px 12px;
+    margin: 0 0 10px 0;
+  }
+
+  /* ── Content box ── */
+  .content-box {
+    background: #fafbff;
+    border: 1px solid #e0e4ed;
+    border-left: 4px solid ${cm.hex};
+    border-radius: 0 8px 8px 0;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    font-size: 11pt;
+    line-height: 1.75;
+  }
+  .content-box p { margin: 0 0 10px 0; }
+  .content-box p:last-child { margin-bottom: 0; }
+  .content-box ul { margin: 6px 0 6px 20px; padding: 0; }
+  .content-box li { margin: 4px 0; }
+  .content-box h2 {
+    font-size: 12pt;
+    color: ${cm.hex};
+    border-left: 3px solid ${cm.hex};
+    padding-left: 10px;
+    margin: 16px 0 8px;
+  }
+  .content-box table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 10px 0;
+    font-size: 10pt;
+  }
+  .content-box th {
+    background: ${cm.hex};
+    color: #fff;
+    padding: 7px 10px;
+    border: 1px solid #ccc;
+    text-align: left;
+  }
+  .content-box td {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    vertical-align: top;
+  }
+  .content-box tr:nth-child(even) td { background: #f0f4ff; }
+
+  /* ── Footer ── */
+  .footer {
+    margin-top: 40px;
+    border-top: 2px solid ${cm.hex};
+    padding-top: 10px;
+    text-align: center;
+    font-size: 9pt;
+    color: #aaa;
+  }
+  .footer strong { color: ${cm.hex}; }
+</style>
+</head>
+<body>
+
+<!-- ── COVER BANNER ── -->
+<div class="cover">
+  <div class="cover-super">Radiology Coach · Manual ${isReport ? 'Report' : 'Paper'} Export</div>
+  <div class="cover-title">${escapeHtml(title)}</div>
+  <div class="cover-meta">
+    <span class="cover-badge">${cm.icon} ${cm.label}</span>
+    <span>Saved: ${date}</span>
+    ${tags.length ? `<span>Tags: ${tags.map(t=>escapeHtml(t)).join(', ')}</span>` : ''}
+  </div>
+</div>
+
+<!-- ── META BAR ── -->
+<div class="meta-bar">
+  <table>
+    <tr><td>Type</td><td>${isReport ? '📄 Radiology Report' : '📚 Paper / Article'}</td></tr>
+    <tr><td>Category</td><td>${cm.icon} ${cm.label}</td></tr>
+    <tr><td>Saved on</td><td>${date}</td></tr>
+    ${sourceUrl ? `<tr><td>Source</td><td><a href="${escapeHtml(sourceUrl)}" style="color:${cm.hex}">${escapeHtml(sourceUrl)}</a></td></tr>` : ''}
+    ${tags.length ? `<tr><td>Tags</td><td>${tags.map(t=>`<span style="display:inline-block;padding:1px 8px;border:1px solid #ccc;border-radius:10px;font-size:9pt;color:#555;margin:2px 3px">${escapeHtml(t)}</span>`).join(' ')}</td></tr>` : ''}
+  </table>
+</div>
+
+<!-- ── CONTENT ── -->
+<div class="section-label">${isReport ? '📋 Report Content' : '📑 Paper Content'}</div>
+<div class="content-box">
+  ${contentToHtml(item.content)}
+</div>
+
+<!-- ── FOOTER ── -->
+<div class="footer">
+  Exported on ${exportedAt} &nbsp;·&nbsp; <strong>Radiology Coach</strong> — Manual Library &nbsp;·&nbsp; AI-Powered Radiology Training Workspace
+</div>
+
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'application/msword' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${title.replace(/[^a-z0-9]/gi, '_').slice(0, 60)}.doc`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(a.href);
+    toast(`Exported "${title}" ✓`, 'ok');
+}
+
+function exportAllManualToWord() {
+    const all = [...manualData.reports.map(i=>({...i,_type:'reports'})), ...manualData.papers.map(i=>({...i,_type:'papers'}))];
+    if (!all.length) { toast('No items to export', 'err'); return; }
+
+    const catMeta = {
+        NEURO:  { hex: '#4d9fff', icon: '🧠' },
+        MSK:    { hex: '#3ecf8e', icon: '🦴' },
+        BODY:   { hex: '#f0b429', icon: '🫀' },
+        OTHERS: { hex: '#7a8fb5', icon: '📂' },
+    };
+
+    const itemsHtml = all.map((item, idx) => {
+        const cm = catMeta[item.category] || catMeta.OTHERS;
+        const date = item.created_at ? new Date(item.created_at).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}) : '';
+        const tags = item.tags ? item.tags.split(',').map(t=>t.trim()).filter(Boolean) : [];
+        return `
+        <div style="page-break-before:${idx>0?'always':'auto'};padding-top:${idx>0?'24px':'0'}">
+          <div style="background:linear-gradient(135deg,${cm.hex} 0%,#1a1a2e 100%);color:#fff;padding:20px 28px;border-radius:8px;margin-bottom:20px">
+            <div style="font-size:8.5pt;letter-spacing:2px;text-transform:uppercase;opacity:.75;margin-bottom:6px">
+              ${item._type === 'reports' ? 'Radiology Report' : 'Paper / Article'} · ${cm.icon} ${item.category}
+            </div>
+            <div style="font-size:16pt;font-weight:700;line-height:1.3;margin-bottom:10px">${escapeHtml(item.title)}</div>
+            <div style="font-size:9.5pt;opacity:.85">${date}${tags.length ? ' · ' + tags.map(t=>escapeHtml(t)).join(', ') : ''}</div>
+          </div>
+          ${item.source_url ? `<p style="font-size:10pt;margin:0 0 12px"><span style="color:#888">Source: </span><a href="${escapeHtml(item.source_url)}" style="color:${cm.hex}">${escapeHtml(item.source_url)}</a></p>` : ''}
+          <div style="background:#fafbff;border:1px solid #e0e4ed;border-left:4px solid ${cm.hex};border-radius:0 8px 8px 0;padding:14px 18px;font-size:11pt;line-height:1.75;white-space:pre-wrap">${escapeHtml(item.content)}</div>
+        </div>`;
+    }).join('<hr style="border:none;border-top:1px solid #e0e4ed;margin:28px 0">');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Manual Library Export</title>
+    <style>body{font-family:Calibri,'Segoe UI',Arial,sans-serif;font-size:11pt;color:#1a1a2e;line-height:1.65;margin:2.54cm}</style>
+    </head><body>
+    <div style="text-align:center;margin-bottom:36px;padding-bottom:16px;border-bottom:3px solid #4d9fff">
+      <div style="font-size:22pt;font-weight:700;color:#1a1a2e">Manual Library</div>
+      <div style="font-size:11pt;color:#888;margin-top:6px">${all.length} items · Exported ${new Date().toLocaleString()}</div>
+    </div>
+    ${itemsHtml}
+    <div style="margin-top:40px;border-top:2px solid #4d9fff;padding-top:10px;text-align:center;font-size:9pt;color:#aaa">
+      <strong style="color:#4d9fff">Radiology Coach</strong> — Manual Library Export
+    </div>
+    </body></html>`;
+
+    const blob = new Blob([html], { type: 'application/msword' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `manual_library_export_${new Date().toISOString().slice(0,10)}.doc`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(a.href);
+    toast(`Exported all ${all.length} items ✓`, 'ok');
 }
 
 </script>
