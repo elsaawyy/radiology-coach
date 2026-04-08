@@ -77,6 +77,30 @@ papers = Table("papers", metadata,
     Column("user_prompt",  Text, nullable=True),  # ADDED: store custom prompt
 )
 
+manual_reports = Table("manual_reports", metadata,
+    Column("id",         Integer, primary_key=True),
+    Column("user_id",    Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("title",      String(500), nullable=False),
+    Column("content",    Text, nullable=False),
+    Column("category",   String(20), nullable=False),
+    Column("source_url", String(1000), nullable=True),
+    Column("tags",       Text, nullable=True),
+    Column("created_at", DateTime, server_default=func.now()),
+    Column("updated_at", DateTime, server_default=func.now(), onupdate=func.now()),
+)
+
+manual_papers = Table("manual_papers", metadata,
+    Column("id",         Integer, primary_key=True),
+    Column("user_id",    Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+    Column("title",      String(500), nullable=False),
+    Column("content",    Text, nullable=False),
+    Column("category",   String(20), nullable=False),
+    Column("source_url", String(1000), nullable=True),
+    Column("tags",       Text, nullable=True),
+    Column("created_at", DateTime, server_default=func.now()),
+    Column("updated_at", DateTime, server_default=func.now(), onupdate=func.now()),
+)
+
 engine = sqlalchemy.create_engine(DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://"))
 
 # ─── LIFESPAN ────────────────────────────────────────────────────────────────
@@ -147,6 +171,20 @@ class DigestRequest(BaseModel):
 
 class UpdateTitleRequest(BaseModel):
     title: str
+
+class ManualItemCreate(BaseModel):
+    title: str
+    content: str
+    category: str
+    source_url: Optional[str] = None
+    tags: Optional[str] = None
+
+class ManualItemUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    category: Optional[str] = None
+    source_url: Optional[str] = None
+    tags: Optional[str] = None
 
 # ─── AUTH HELPERS ────────────────────────────────────────────────────────────
 def hash_password(pw: str) -> str:
@@ -827,6 +865,107 @@ async def delete_paper(paper_id: int, user=Depends(get_current_user)):
     ))
     if not row: raise HTTPException(404, "Paper not found")
     await database.execute(papers.delete().where(papers.c.id == paper_id))
+    return {"ok": True}
+
+# ─── MANUAL LIBRARY ──────────────────────────────────────────────────────────
+VALID_CATEGORIES = {"NEURO", "MSK", "BODY", "OTHERS"}
+
+@app.post("/manual/reports")
+async def create_manual_report(req: ManualItemCreate, user=Depends(get_current_user)):
+    if req.category not in VALID_CATEGORIES:
+        raise HTTPException(400, f"category must be one of {VALID_CATEGORIES}")
+    rid = await database.execute(manual_reports.insert().values(
+        user_id=user["id"], title=req.title, content=req.content,
+        category=req.category, source_url=req.source_url, tags=req.tags,
+    ))
+    row = await database.fetch_one(manual_reports.select().where(manual_reports.c.id == rid))
+    return dict(row)
+
+@app.post("/manual/papers")
+async def create_manual_paper(req: ManualItemCreate, user=Depends(get_current_user)):
+    if req.category not in VALID_CATEGORIES:
+        raise HTTPException(400, f"category must be one of {VALID_CATEGORIES}")
+    pid = await database.execute(manual_papers.insert().values(
+        user_id=user["id"], title=req.title, content=req.content,
+        category=req.category, source_url=req.source_url, tags=req.tags,
+    ))
+    row = await database.fetch_one(manual_papers.select().where(manual_papers.c.id == pid))
+    return dict(row)
+
+@app.get("/manual/reports")
+async def list_manual_reports(user=Depends(get_current_user), skip: int = 0, limit: int = 200):
+    q = manual_reports.select().where(manual_reports.c.user_id == user["id"])\
+                      .order_by(manual_reports.c.created_at.desc()).offset(skip).limit(limit)
+    rows = await database.fetch_all(q)
+    return [dict(r) for r in rows]
+
+@app.get("/manual/papers")
+async def list_manual_papers(user=Depends(get_current_user), skip: int = 0, limit: int = 200):
+    q = manual_papers.select().where(manual_papers.c.user_id == user["id"])\
+                     .order_by(manual_papers.c.created_at.desc()).offset(skip).limit(limit)
+    rows = await database.fetch_all(q)
+    return [dict(r) for r in rows]
+
+@app.get("/manual/reports/{item_id}")
+async def get_manual_report(item_id: int, user=Depends(get_current_user)):
+    row = await database.fetch_one(manual_reports.select().where(
+        (manual_reports.c.id == item_id) & (manual_reports.c.user_id == user["id"])
+    ))
+    if not row: raise HTTPException(404, "Report not found")
+    return dict(row)
+
+@app.get("/manual/papers/{item_id}")
+async def get_manual_paper(item_id: int, user=Depends(get_current_user)):
+    row = await database.fetch_one(manual_papers.select().where(
+        (manual_papers.c.id == item_id) & (manual_papers.c.user_id == user["id"])
+    ))
+    if not row: raise HTTPException(404, "Paper not found")
+    return dict(row)
+
+@app.put("/manual/reports/{item_id}")
+async def update_manual_report(item_id: int, req: ManualItemUpdate, user=Depends(get_current_user)):
+    row = await database.fetch_one(manual_reports.select().where(
+        (manual_reports.c.id == item_id) & (manual_reports.c.user_id == user["id"])
+    ))
+    if not row: raise HTTPException(404, "Report not found")
+    updates = {k: v for k, v in req.dict().items() if v is not None}
+    if "category" in updates and updates["category"] not in VALID_CATEGORIES:
+        raise HTTPException(400, f"category must be one of {VALID_CATEGORIES}")
+    if updates:
+        await database.execute(manual_reports.update().where(manual_reports.c.id == item_id).values(**updates))
+    row = await database.fetch_one(manual_reports.select().where(manual_reports.c.id == item_id))
+    return dict(row)
+
+@app.put("/manual/papers/{item_id}")
+async def update_manual_paper(item_id: int, req: ManualItemUpdate, user=Depends(get_current_user)):
+    row = await database.fetch_one(manual_papers.select().where(
+        (manual_papers.c.id == item_id) & (manual_papers.c.user_id == user["id"])
+    ))
+    if not row: raise HTTPException(404, "Paper not found")
+    updates = {k: v for k, v in req.dict().items() if v is not None}
+    if "category" in updates and updates["category"] not in VALID_CATEGORIES:
+        raise HTTPException(400, f"category must be one of {VALID_CATEGORIES}")
+    if updates:
+        await database.execute(manual_papers.update().where(manual_papers.c.id == item_id).values(**updates))
+    row = await database.fetch_one(manual_papers.select().where(manual_papers.c.id == item_id))
+    return dict(row)
+
+@app.delete("/manual/reports/{item_id}")
+async def delete_manual_report(item_id: int, user=Depends(get_current_user)):
+    row = await database.fetch_one(manual_reports.select().where(
+        (manual_reports.c.id == item_id) & (manual_reports.c.user_id == user["id"])
+    ))
+    if not row: raise HTTPException(404, "Report not found")
+    await database.execute(manual_reports.delete().where(manual_reports.c.id == item_id))
+    return {"ok": True}
+
+@app.delete("/manual/papers/{item_id}")
+async def delete_manual_paper(item_id: int, user=Depends(get_current_user)):
+    row = await database.fetch_one(manual_papers.select().where(
+        (manual_papers.c.id == item_id) & (manual_papers.c.user_id == user["id"])
+    ))
+    if not row: raise HTTPException(404, "Paper not found")
+    await database.execute(manual_papers.delete().where(manual_papers.c.id == item_id))
     return {"ok": True}
 
 # ─── HEALTH ──────────────────────────────────────────────────────────────────

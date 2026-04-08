@@ -540,6 +540,7 @@ textarea::placeholder { color:var(--text3); }
     <div class="tab active" onclick="switchTab('report')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Report Assistant</div>
     <div class="tab" onclick="switchTab('digest')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>Paper Digest</div>
     <div class="tab" onclick="switchTab('library')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>Libraries <span class="tab-cnt" id="lib-tab-cnt">0</span></div>
+    <div class="tab" onclick="switchTab('manual')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Manual Library <span class="tab-cnt" id="manual-tab-cnt">0</span></div>
   </div>
 
   <div class="main">
@@ -673,10 +674,119 @@ textarea::placeholder { color:var(--text3); }
       <input type="text" class="search-input" id="lib-search" placeholder="Search…" oninput="renderLib()">
       <div id="lib-content"></div>
     </div>
+
+    <div class="panel" id="panel-manual">
+      <div class="lib-toolbar">
+        <div>
+          <div class="section-head" style="margin-bottom:4px">Manual Library</div>
+          <div style="font-size:12px;color:var(--text3);font-family:var(--mono)">Your personally saved reports &amp; papers</div>
+        </div>
+        <button class="btn-primary" onclick="openManualSaveModal()" style="padding:8px 18px;font-size:12px">+ Save New</button>
+      </div>
+
+      <div class="lib-tabs" style="margin-bottom:16px">
+        <button class="lib-tab active" id="mlt-reports" onclick="setManualTab('reports')">📄 Reports (<span id="mcnt-r">0</span>)</button>
+        <button class="lib-tab" id="mlt-papers" onclick="setManualTab('papers')">📚 Papers (<span id="mcnt-p">0</span>)</button>
+      </div>
+
+      <!-- Category filter row -->
+      <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap" id="manual-cat-filters">
+        <button class="chip active" style="border-color:var(--accent);color:var(--accent)" data-cat="ALL" onclick="setManualCat('ALL')">ALL</button>
+        <button class="chip" data-cat="NEURO" onclick="setManualCat('NEURO')">🧠 NEURO</button>
+        <button class="chip" data-cat="MSK" onclick="setManualCat('MSK')">🦴 MSK</button>
+        <button class="chip" data-cat="BODY" onclick="setManualCat('BODY')">🫀 BODY</button>
+        <button class="chip" data-cat="OTHERS" onclick="setManualCat('OTHERS')">📂 OTHERS</button>
+      </div>
+
+      <input type="text" class="search-input" id="manual-search" placeholder="Search by title or content…" oninput="renderManualLib()">
+      <div id="manual-lib-content"></div>
+    </div>
   </div>
 </div>
 
-<!-- MODAL -->
+<!-- MANUAL SAVE / EDIT MODAL -->
+<div class="overlay" id="manual-modal-ov" onclick="closeManualModalOv(event)">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-top">
+      <div class="modal-title" id="manual-modal-title">Save New Item</div>
+      <button class="modal-close" onclick="closeManualModal()">✕</button>
+    </div>
+    <div id="manual-modal-body">
+      <!-- Type radio -->
+      <div class="modal-section">
+        <div class="modal-lbl">Type</div>
+        <div style="display:flex;gap:14px;margin-top:4px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:var(--text2)">
+            <input type="radio" name="manual-type" value="reports" id="mtype-report" checked style="accent-color:var(--accent)"> Report
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:var(--text2)">
+            <input type="radio" name="manual-type" value="papers" id="mtype-paper" style="accent-color:var(--accent)"> Paper
+          </label>
+        </div>
+      </div>
+
+      <!-- Category -->
+      <div class="modal-section">
+        <div class="modal-lbl">Category</div>
+        <select id="manual-cat-select" style="background:var(--surface3);border:1px solid var(--border2);color:var(--text);border-radius:7px;padding:8px 12px;font-family:var(--body);font-size:13px;outline:none;width:100%;margin-top:4px">
+          <option value="NEURO">🧠 NEURO</option>
+          <option value="MSK">🦴 MSK</option>
+          <option value="BODY">🫀 BODY</option>
+          <option value="OTHERS">📂 OTHERS</option>
+        </select>
+      </div>
+
+      <!-- Title -->
+      <div class="modal-section">
+        <div class="modal-lbl">Title <span style="color:var(--red)">*</span></div>
+        <input type="text" id="manual-title-input" placeholder="e.g. LI-RADS criteria for HCC"
+          style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;font-family:var(--body);font-size:13px;outline:none;margin-top:4px;transition:border-color .15s"
+          onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
+      </div>
+
+      <!-- Content -->
+      <div class="modal-section">
+        <div class="modal-lbl">Content <span style="color:var(--red)">*</span></div>
+        <textarea id="manual-content-input" rows="7" placeholder="Paste full report or paper content here…"
+          style="font-family:var(--mono);font-size:12px;line-height:1.6;min-height:140px;margin-top:4px"></textarea>
+      </div>
+
+      <!-- Source URL -->
+      <div class="modal-section">
+        <div class="modal-lbl">Source URL <span style="color:var(--text3);font-weight:400">(optional)</span></div>
+        <input type="url" id="manual-url-input" placeholder="https://doi.org/…"
+          style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;font-family:var(--body);font-size:13px;outline:none;margin-top:4px;transition:border-color .15s"
+          onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
+      </div>
+
+      <!-- Tags -->
+      <div class="modal-section">
+        <div class="modal-lbl">Tags <span style="color:var(--text3);font-weight:400">(optional, comma-separated)</span></div>
+        <input type="text" id="manual-tags-input" placeholder="e.g. liver, HCC, CT, staging"
+          style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;font-family:var(--body);font-size:13px;outline:none;margin-top:4px;transition:border-color .15s"
+          onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:6px">
+        <button class="btn-ghost" style="flex:1" onclick="closeManualModal()">Cancel</button>
+        <button class="btn-primary" style="flex:2" id="manual-save-btn" onclick="submitManualItem()">💾 Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MANUAL VIEW MODAL -->
+<div class="overlay" id="manual-view-ov" onclick="closeManualViewOv(event)">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-top">
+      <div class="modal-title" id="manual-view-title">—</div>
+      <button class="modal-close" onclick="closeManualView()">✕</button>
+    </div>
+    <div id="manual-view-body"></div>
+  </div>
+</div>
+
+<!-- MODAL (AI Library viewer) -->
 <div class="overlay" id="modal-ov" onclick="closeModalOv(event)">
   <div class="modal"><div class="modal-top"><div class="modal-title" id="modal-title">—</div><button class="modal-close" onclick="closeModal()">✕</button></div><div id="modal-body"></div></div>
 </div>
@@ -849,12 +959,13 @@ function getApiKey() { return (sessionStorage.getItem('rc_ak') || '').trim(); }
 // ─────────────────────────────────────────────────────────────────────────────
 // TABS
 function switchTab(name) {
-    const names = ['report', 'digest', 'library'];
+    const names = ['report', 'digest', 'library', 'manual'];
     document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', names[i] === name));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    const map = { report: 'panel-report', digest: 'panel-digest', library: 'panel-library' };
+    const map = { report: 'panel-report', digest: 'panel-digest', library: 'panel-library', manual: 'panel-manual' };
     document.getElementById(map[name]).classList.add('active');
     if (name === 'library') loadLibrary();
+    if (name === 'manual') loadManualLibrary();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1465,6 +1576,216 @@ function applyTemplate(feature, templateKey) {
     if (!tmpl) return;
     document.getElementById(`${feature}-custom-prompt`).value = tmpl;
     toast('Template applied ✓', 'ok');
+}
+// ─────────────────────────────────────────────────────────────────────────────
+// MANUAL LIBRARY
+let manualTab = 'reports';
+let manualCat = 'ALL';
+let manualData = { reports: [], papers: [] };
+let editingManualItem = null; // { id, type } when editing
+
+const CAT_COLORS = {
+    NEURO:  { bg: 'rgba(77,159,255,.15)',  text: 'var(--accent)'  },
+    MSK:    { bg: 'rgba(62,207,142,.15)',  text: 'var(--green)'   },
+    BODY:   { bg: 'rgba(240,180,41,.15)', text: 'var(--amber)'   },
+    OTHERS: { bg: 'rgba(122,143,181,.15)',text: 'var(--text2)'   },
+};
+
+function catBadge(cat) {
+    const c = CAT_COLORS[cat] || CAT_COLORS.OTHERS;
+    return `<span style="display:inline-block;padding:2px 9px;border-radius:10px;font-size:10px;font-family:var(--mono);font-weight:600;background:${c.bg};color:${c.text};letter-spacing:.5px">${cat}</span>`;
+}
+
+async function loadManualLibrary() {
+    try {
+        const [reports, papers] = await Promise.all([
+            api('GET', '/manual/reports'),
+            api('GET', '/manual/papers'),
+        ]);
+        manualData.reports = reports;
+        manualData.papers = papers;
+        updateManualCount();
+        renderManualLib();
+    } catch (e) { toast('Error loading manual library: ' + e.message, 'err'); }
+}
+
+function updateManualCount() {
+    const total = manualData.reports.length + manualData.papers.length;
+    document.getElementById('manual-tab-cnt').textContent = total;
+    document.getElementById('mcnt-r').textContent = manualData.reports.length;
+    document.getElementById('mcnt-p').textContent = manualData.papers.length;
+}
+
+function setManualTab(t) {
+    manualTab = t;
+    document.getElementById('mlt-reports').classList.toggle('active', t === 'reports');
+    document.getElementById('mlt-papers').classList.toggle('active', t === 'papers');
+    renderManualLib();
+}
+
+function setManualCat(cat) {
+    manualCat = cat;
+    document.querySelectorAll('#manual-cat-filters .chip').forEach(btn => {
+        const active = btn.dataset.cat === cat;
+        btn.style.borderColor = active ? 'var(--accent)' : '';
+        btn.style.color = active ? 'var(--accent)' : '';
+    });
+    renderManualLib();
+}
+
+function renderManualLib() {
+    const q = (document.getElementById('manual-search')?.value || '').toLowerCase();
+    let items = manualTab === 'reports' ? manualData.reports : manualData.papers;
+    if (manualCat !== 'ALL') items = items.filter(i => i.category === manualCat);
+    if (q) items = items.filter(i => i.title.toLowerCase().includes(q) || i.content.toLowerCase().includes(q));
+
+    const el = document.getElementById('manual-lib-content');
+    if (!items.length) {
+        el.innerHTML = `<div class="lib-empty"><div class="lib-empty-icon">${manualTab === 'reports' ? '📋' : '📚'}</div><div class="lib-empty-text">No saved ${manualTab} yet. Click "+ Save New" to add one.</div></div>`;
+        return;
+    }
+
+    el.innerHTML = '<div class="lib-grid">' + items.map(item => {
+        const ts = item.created_at ? new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+        const preview = (item.content || '').slice(0, 100) + (item.content?.length > 100 ? '…' : '');
+        const tags = item.tags ? item.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+        const tagHtml = tags.length ? `<div style="margin-top:6px;display:flex;gap:5px;flex-wrap:wrap">${tags.map(t => `<span style="font-size:10px;font-family:var(--mono);color:var(--text3);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:1px 7px">${esc(t)}</span>`).join('')}</div>` : '';
+        return `<div class="lib-card" onclick="openManualItem(${item.id},'${manualTab}')">
+          <div class="lib-card-top">
+            <div>
+              <div class="lib-card-title">${esc(item.title)}</div>
+              <div class="lib-card-meta" style="display:flex;align-items:center;gap:8px;margin-top:4px">
+                ${catBadge(item.category)}
+                <span>${ts}</span>
+              </div>
+            </div>
+            <div class="lib-card-btns" onclick="event.stopPropagation()">
+              <button class="btn-sm" onclick="openManualEdit(${item.id},'${manualTab}')" title="Edit">✏</button>
+              <button class="btn-sm del" onclick="deleteManualItem(${item.id},'${manualTab}')" title="Delete">🗑</button>
+            </div>
+          </div>
+          <div class="lib-card-preview">${esc(preview)}</div>
+          ${tagHtml}
+        </div>`;
+    }).join('') + '</div>';
+}
+
+function openManualItem(id, type) {
+    const item = (type === 'reports' ? manualData.reports : manualData.papers).find(i => i.id === id);
+    if (!item) return;
+    const ts = item.created_at ? new Date(item.created_at).toLocaleString() : '';
+    const tags = item.tags ? item.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+    document.getElementById('manual-view-title').textContent = item.title;
+    document.getElementById('manual-view-body').innerHTML = `
+        <div class="modal-section" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            ${catBadge(item.category)}
+            ${ts ? `<span style="font-size:11px;font-family:var(--mono);color:var(--text3)">${ts}</span>` : ''}
+            ${item.source_url ? `<a href="${esc(item.source_url)}" target="_blank" style="font-size:11px;font-family:var(--mono);color:var(--accent)">🔗 Source</a>` : ''}
+        </div>
+        ${tags.length ? `<div class="modal-section" style="display:flex;gap:6px;flex-wrap:wrap">${tags.map(t => `<span style="font-size:11px;font-family:var(--mono);color:var(--text3);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:2px 9px">${esc(t)}</span>`).join('')}</div>` : ''}
+        <div class="modal-section">
+            <div class="modal-lbl">Content</div>
+            <div class="modal-val" style="white-space:pre-wrap;max-height:55vh;overflow-y:auto">${esc(item.content)}</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+            <button class="btn-ghost" style="flex:1" onclick="closeManualView()">Close</button>
+            <button class="btn-primary" style="flex:1" onclick="closeManualView();openManualEdit(${item.id},'${type}')">✏ Edit</button>
+        </div>`;
+    document.getElementById('manual-view-ov').classList.add('show');
+}
+
+function closeManualView() { document.getElementById('manual-view-ov').classList.remove('show'); }
+function closeManualViewOv(e) { if (e.target === document.getElementById('manual-view-ov')) closeManualView(); }
+
+function openManualEdit(id, type) {
+    const item = (type === 'reports' ? manualData.reports : manualData.papers).find(i => i.id === id);
+    if (!item) return;
+    editingManualItem = { id, type };
+    document.getElementById('manual-modal-title').textContent = 'Edit Item';
+    // Lock type when editing
+    document.getElementById('mtype-report').checked = type === 'reports';
+    document.getElementById('mtype-paper').checked = type === 'papers';
+    document.getElementById('mtype-report').disabled = true;
+    document.getElementById('mtype-paper').disabled = true;
+    document.getElementById('manual-cat-select').value = item.category;
+    document.getElementById('manual-title-input').value = item.title;
+    document.getElementById('manual-content-input').value = item.content;
+    document.getElementById('manual-url-input').value = item.source_url || '';
+    document.getElementById('manual-tags-input').value = item.tags || '';
+    document.getElementById('manual-save-btn').textContent = '💾 Update';
+    document.getElementById('manual-modal-ov').classList.add('show');
+}
+
+function openManualSaveModal() {
+    editingManualItem = null;
+    document.getElementById('manual-modal-title').textContent = 'Save New Item';
+    document.getElementById('mtype-report').checked = true;
+    document.getElementById('mtype-report').disabled = false;
+    document.getElementById('mtype-paper').disabled = false;
+    document.getElementById('manual-cat-select').value = 'NEURO';
+    document.getElementById('manual-title-input').value = '';
+    document.getElementById('manual-content-input').value = '';
+    document.getElementById('manual-url-input').value = '';
+    document.getElementById('manual-tags-input').value = '';
+    document.getElementById('manual-save-btn').textContent = '💾 Save';
+    document.getElementById('manual-modal-ov').classList.add('show');
+}
+
+function closeManualModal() { document.getElementById('manual-modal-ov').classList.remove('show'); editingManualItem = null; }
+function closeManualModalOv(e) { if (e.target === document.getElementById('manual-modal-ov')) closeManualModal(); }
+
+async function submitManualItem() {
+    const title = document.getElementById('manual-title-input').value.trim();
+    const content = document.getElementById('manual-content-input').value.trim();
+    const category = document.getElementById('manual-cat-select').value;
+    const source_url = document.getElementById('manual-url-input').value.trim() || null;
+    const tags = document.getElementById('manual-tags-input').value.trim() || null;
+
+    if (!title) { toast('Title is required', 'err'); return; }
+    if (!content) { toast('Content is required', 'err'); return; }
+
+    const btn = document.getElementById('manual-save-btn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+
+    try {
+        if (editingManualItem) {
+            // Update
+            const { id, type } = editingManualItem;
+            const updated = await api('PUT', `/manual/${type}/${id}`, { title, content, category, source_url, tags });
+            const arr = type === 'reports' ? manualData.reports : manualData.papers;
+            const idx = arr.findIndex(i => i.id === id);
+            if (idx !== -1) arr[idx] = updated;
+            toast('Updated ✓', 'ok');
+        } else {
+            // Create
+            const type = document.querySelector('input[name="manual-type"]:checked').value;
+            const created = await api('POST', `/manual/${type}`, { title, content, category, source_url, tags });
+            if (type === 'reports') manualData.reports.unshift(created);
+            else manualData.papers.unshift(created);
+            // Switch to matching tab
+            setManualTab(type);
+            toast('Saved ✓', 'ok');
+        }
+        updateManualCount();
+        renderManualLib();
+        closeManualModal();
+    } catch (e) {
+        toast('Error: ' + e.message, 'err');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = editingManualItem ? '💾 Update' : '💾 Save';
+    }
+}
+
+async function deleteManualItem(id, type) {
+    if (!confirm('Delete this item?')) return;
+    try {
+        await api('DELETE', `/manual/${type}/${id}`);
+        if (type === 'reports') manualData.reports = manualData.reports.filter(i => i.id !== id);
+        else manualData.papers = manualData.papers.filter(i => i.id !== id);
+        updateManualCount(); renderManualLib(); toast('Deleted ✓', 'ok');
+    } catch (e) { toast('Error: ' + e.message, 'err'); }
 }
 
 </script>
