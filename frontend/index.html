@@ -1069,35 +1069,6 @@ function showAuthErr(el, msg) { el.textContent = msg; el.classList.add('show'); 
 // ============================================================
 let quillEditor = null;
 
-function initQuillEditor(content = '') {
-    if (quillEditor) {
-        // Destroy existing editor
-        const container = document.getElementById('quill-editor-container');
-        if (container && container.innerHTML) {
-            container.innerHTML = '';
-        }
-    }
-    
-    // Create new editor
-    quillEditor = new Quill('#quill-editor-container', {
-        theme: 'snow',
-        placeholder: 'Write your content here with rich formatting...',
-        modules: {
-            toolbar: [
-                ['bold', 'italic', 'underline'],
-                [{ 'header': [1, 2, 3, false] }],
-                ['clean'],
-                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                ['link']
-            ]
-        }
-    });
-    
-    // Set content if provided
-    if (content && content !== '') {
-        quillEditor.root.innerHTML = content;
-    }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // API KEY
