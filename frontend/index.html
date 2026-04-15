@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Quill.js CSS and JS -->
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Radiology Coach</title>
@@ -82,6 +85,125 @@
   margin-top: 10px;
   flex-wrap: wrap;
 }
+
+/* Quill Editor Custom Styling */
+.quill-editor-wrapper {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--r);
+    overflow: hidden;
+    margin-top: 4px;
+}
+
+.quill-editor-wrapper .ql-toolbar {
+    background: var(--surface3);
+    border: none;
+    border-bottom: 1px solid var(--border2);
+    padding: 8px;
+}
+
+.quill-editor-wrapper .ql-toolbar button {
+    color: var(--text2);
+}
+
+.quill-editor-wrapper .ql-toolbar button:hover {
+    color: var(--accent);
+}
+
+.quill-editor-wrapper .ql-container {
+    border: none;
+    font-family: var(--body);
+    font-size: 13px;
+    min-height: 200px;
+}
+
+.quill-editor-wrapper .ql-editor {
+    background: var(--surface2);
+    color: var(--text);
+    line-height: 1.75;
+}
+
+.quill-editor-wrapper .ql-editor h1 {
+    font-size: 24px;
+    margin: 16px 0 8px;
+    font-weight: 700;
+}
+
+.quill-editor-wrapper .ql-editor h2 {
+    font-size: 20px;
+    margin: 14px 0 7px;
+    font-weight: 600;
+}
+
+.quill-editor-wrapper .ql-editor h3 {
+    font-size: 16px;
+    margin: 12px 0 6px;
+    font-weight: 600;
+}
+
+.quill-editor-wrapper .ql-editor ul,
+.quill-editor-wrapper .ql-editor ol {
+    padding-left: 24px;
+    margin: 8px 0;
+}
+
+.quill-editor-wrapper .ql-editor li {
+    margin: 4px 0;
+}
+
+/* Content display for manual library items */
+.manual-content-display {
+    line-height: 1.75;
+    font-size: 13px;
+    color: var(--text);
+}
+
+.manual-content-display h1,
+.manual-content-display h2,
+.manual-content-display h3 {
+    margin-top: 16px;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.manual-content-display h1 {
+    font-size: 22px;
+}
+
+.manual-content-display h2 {
+    font-size: 18px;
+    border-left: 3px solid var(--accent);
+    padding-left: 10px;
+}
+
+.manual-content-display h3 {
+    font-size: 16px;
+}
+
+.manual-content-display ul,
+.manual-content-display ol {
+    padding-left: 24px;
+    margin: 8px 0;
+}
+
+.manual-content-display li {
+    margin: 4px 0;
+}
+
+.manual-content-display p {
+    margin: 8px 0;
+}
+
+.manual-content-display strong {
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.manual-content-display em {
+    font-style: italic;
+}
+
+
 .chip {
   padding: 4px 11px;
   border-radius: 14px;
@@ -709,7 +831,7 @@ textarea::placeholder { color:var(--text3); }
 
 <!-- MANUAL SAVE / EDIT MODAL -->
 <div class="overlay" id="manual-modal-ov" onclick="closeManualModalOv(event)">
-  <div class="modal" style="max-width:560px">
+  <div class="modal" style="max-width: 760px">
     <div class="modal-top">
       <div class="modal-title" id="manual-modal-title">Save New Item</div>
       <button class="modal-close" onclick="closeManualModal()">✕</button>
@@ -742,32 +864,31 @@ textarea::placeholder { color:var(--text3); }
       <!-- Title -->
       <div class="modal-section">
         <div class="modal-lbl">Title <span style="color:var(--red)">*</span></div>
-        <input type="text" id="manual-title-input" placeholder="e.g. LI-RADS criteria for HCC"
-          style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;font-family:var(--body);font-size:13px;outline:none;margin-top:4px;transition:border-color .15s"
-          onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
+        <input type="text" id="manual-title-input" placeholder="e.g., LI-RADS criteria for HCC"
+          style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;font-family:var(--body);font-size:13px;outline:none;margin-top:4px">
       </div>
 
-      <!-- Content -->
+      <!-- Content with Quill Editor -->
       <div class="modal-section">
         <div class="modal-lbl">Content <span style="color:var(--red)">*</span></div>
-        <textarea id="manual-content-input" rows="7" placeholder="Paste full report or paper content here…"
-          style="font-family:var(--mono);font-size:12px;line-height:1.6;min-height:140px;margin-top:4px"></textarea>
+        <div id="quill-editor-container" class="quill-editor-wrapper"></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:6px;font-family:var(--mono)">
+          ✨ Rich text supported: bold, italic, lists, headings, and more
+        </div>
       </div>
 
       <!-- Source URL -->
       <div class="modal-section">
         <div class="modal-lbl">Source URL <span style="color:var(--text3);font-weight:400">(optional)</span></div>
         <input type="url" id="manual-url-input" placeholder="https://doi.org/…"
-          style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;font-family:var(--body);font-size:13px;outline:none;margin-top:4px;transition:border-color .15s"
-          onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
+          style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;font-family:var(--body);font-size:13px;outline:none;margin-top:4px">
       </div>
 
       <!-- Tags -->
       <div class="modal-section">
         <div class="modal-lbl">Tags <span style="color:var(--text3);font-weight:400">(optional, comma-separated)</span></div>
-        <input type="text" id="manual-tags-input" placeholder="e.g. liver, HCC, CT, staging"
-          style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;font-family:var(--body);font-size:13px;outline:none;margin-top:4px;transition:border-color .15s"
-          onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
+        <input type="text" id="manual-tags-input" placeholder="e.g., liver, HCC, CT, staging"
+          style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;font-family:var(--body);font-size:13px;outline:none;margin-top:4px">
       </div>
 
       <div style="display:flex;gap:10px;margin-top:6px">
@@ -777,6 +898,8 @@ textarea::placeholder { color:var(--text3); }
     </div>
   </div>
 </div>
+
+
 
 <!-- MANUAL VIEW MODAL -->
 <div class="overlay" id="manual-view-ov" onclick="closeManualViewOv(event)">
@@ -939,6 +1062,42 @@ function doLogout() {
 }
 
 function showAuthErr(el, msg) { el.textContent = msg; el.classList.add('show'); }
+
+
+// ============================================================
+// QUILL EDITOR INITIALIZATION
+// ============================================================
+let quillEditor = null;
+
+function initQuillEditor(content = '') {
+    if (quillEditor) {
+        // Destroy existing editor
+        const container = document.getElementById('quill-editor-container');
+        if (container && container.innerHTML) {
+            container.innerHTML = '';
+        }
+    }
+    
+    // Create new editor
+    quillEditor = new Quill('#quill-editor-container', {
+        theme: 'snow',
+        placeholder: 'Write your content here with rich formatting...',
+        modules: {
+            toolbar: [
+                ['bold', 'italic', 'underline'],
+                [{ 'header': [1, 2, 3, false] }],
+                ['clean'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                ['link']
+            ]
+        }
+    });
+    
+    // Set content if provided
+    if (content && content !== '') {
+        quillEditor.root.innerHTML = content;
+    }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // API KEY
@@ -1579,11 +1738,13 @@ function applyTemplate(feature, templateKey) {
     toast('Template applied ✓', 'ok');
 }
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // MANUAL LIBRARY
 let manualTab = 'reports';
 let manualCat = 'ALL';
 let manualData = { reports: [], papers: [] };
-let editingManualItem = null; // { id, type } when editing
+let editingManualItem = null;
+let quillEditor = null;
 
 const CAT_COLORS = {
     NEURO:  { bg: 'rgba(77,159,255,.15)',  text: 'var(--accent)'  },
@@ -1595,6 +1756,34 @@ const CAT_COLORS = {
 function catBadge(cat) {
     const c = CAT_COLORS[cat] || CAT_COLORS.OTHERS;
     return `<span style="display:inline-block;padding:2px 9px;border-radius:10px;font-size:10px;font-family:var(--mono);font-weight:600;background:${c.bg};color:${c.text};letter-spacing:.5px">${cat}</span>`;
+}
+
+// Initialize Quill Editor
+function initQuillEditor(content = '') {
+    if (quillEditor) {
+        const container = document.getElementById('quill-editor-container');
+        if (container && container.innerHTML) {
+            container.innerHTML = '';
+        }
+    }
+    
+    quillEditor = new Quill('#quill-editor-container', {
+        theme: 'snow',
+        placeholder: 'Write your content here with rich formatting...',
+        modules: {
+            toolbar: [
+                ['bold', 'italic', 'underline'],
+                [{ 'header': [1, 2, 3, false] }],
+                ['clean'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                ['link']
+            ]
+        }
+    });
+    
+    if (content && content !== '') {
+        quillEditor.root.innerHTML = content;
+    }
 }
 
 async function loadManualLibrary() {
@@ -1638,7 +1827,7 @@ function renderManualLib() {
     const q = (document.getElementById('manual-search')?.value || '').toLowerCase();
     let items = manualTab === 'reports' ? manualData.reports : manualData.papers;
     if (manualCat !== 'ALL') items = items.filter(i => i.category === manualCat);
-    if (q) items = items.filter(i => i.title.toLowerCase().includes(q) || i.content.toLowerCase().includes(q));
+    if (q) items = items.filter(i => i.title.toLowerCase().includes(q) || (i.content || '').toLowerCase().includes(q));
 
     const el = document.getElementById('manual-lib-content');
     if (!items.length) {
@@ -1648,9 +1837,14 @@ function renderManualLib() {
 
     el.innerHTML = '<div class="lib-grid">' + items.map(item => {
         const ts = item.created_at ? new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-        const preview = (item.content || '').slice(0, 100) + (item.content?.length > 100 ? '…' : '');
+        
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = item.content || '';
+        const plainPreview = tempDiv.textContent.slice(0, 100) + (tempDiv.textContent.length > 100 ? '…' : '');
+        
         const tags = item.tags ? item.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
         const tagHtml = tags.length ? `<div style="margin-top:6px;display:flex;gap:5px;flex-wrap:wrap">${tags.map(t => `<span style="font-size:10px;font-family:var(--mono);color:var(--text3);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:1px 7px">${esc(t)}</span>`).join('')}</div>` : '';
+        
         return `<div class="lib-card" onclick="openManualItem(${item.id},'${manualTab}')">
           <div class="lib-card-top">
             <div>
@@ -1666,7 +1860,7 @@ function renderManualLib() {
               <button class="btn-sm del" onclick="deleteManualItem(${item.id},'${manualTab}')" title="Delete">🗑</button>
             </div>
           </div>
-          <div class="lib-card-preview">${esc(preview)}</div>
+          <div class="lib-card-preview">${esc(plainPreview)}</div>
           ${tagHtml}
         </div>`;
     }).join('') + '</div>';
@@ -1675,6 +1869,7 @@ function renderManualLib() {
 function openManualItem(id, type) {
     const item = (type === 'reports' ? manualData.reports : manualData.papers).find(i => i.id === id);
     if (!item) return;
+    
     const ts = item.created_at ? new Date(item.created_at).toLocaleString() : '';
     const tags = item.tags ? item.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
 
@@ -1688,7 +1883,7 @@ function openManualItem(id, type) {
         ${tags.length ? `<div class="modal-section" style="display:flex;gap:6px;flex-wrap:wrap">${tags.map(t => `<span style="font-size:11px;font-family:var(--mono);color:var(--text3);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:2px 9px">${esc(t)}</span>`).join('')}</div>` : ''}
         <div class="modal-section">
             <div class="modal-lbl">Content</div>
-            <div class="modal-val" style="white-space:pre-wrap;max-height:55vh;overflow-y:auto">${esc(item.content)}</div>
+            <div class="modal-val manual-content-display" style="white-space:normal;max-height:55vh;overflow-y:auto">${item.content || '—'}</div>
         </div>
         <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
             <button class="btn-ghost" style="flex:1" onclick="closeManualView()">Close</button>
@@ -1698,28 +1893,39 @@ function openManualItem(id, type) {
     document.getElementById('manual-view-ov').classList.add('show');
 }
 
-function closeManualView() { document.getElementById('manual-view-ov').classList.remove('show'); }
-function closeManualViewOv(e) { if (e.target === document.getElementById('manual-view-ov')) closeManualView(); }
+function closeManualView() { 
+    document.getElementById('manual-view-ov').classList.remove('show'); 
+}
 
+function closeManualViewOv(e) { 
+    if (e.target === document.getElementById('manual-view-ov')) closeManualView(); 
+}
+
+// Open edit modal
 function openManualEdit(id, type) {
     const item = (type === 'reports' ? manualData.reports : manualData.papers).find(i => i.id === id);
     if (!item) return;
+    
     editingManualItem = { id, type };
     document.getElementById('manual-modal-title').textContent = 'Edit Item';
-    // Lock type when editing
+    
     document.getElementById('mtype-report').checked = type === 'reports';
     document.getElementById('mtype-paper').checked = type === 'papers';
     document.getElementById('mtype-report').disabled = true;
     document.getElementById('mtype-paper').disabled = true;
+    
     document.getElementById('manual-cat-select').value = item.category;
     document.getElementById('manual-title-input').value = item.title;
-    document.getElementById('manual-content-input').value = item.content;
     document.getElementById('manual-url-input').value = item.source_url || '';
     document.getElementById('manual-tags-input').value = item.tags || '';
+    
+    initQuillEditor(item.content);
+    
     document.getElementById('manual-save-btn').textContent = '💾 Update';
     document.getElementById('manual-modal-ov').classList.add('show');
 }
 
+// Open save modal
 function openManualSaveModal() {
     editingManualItem = null;
     document.getElementById('manual-modal-title').textContent = 'Save New Item';
@@ -1728,45 +1934,60 @@ function openManualSaveModal() {
     document.getElementById('mtype-paper').disabled = false;
     document.getElementById('manual-cat-select').value = 'NEURO';
     document.getElementById('manual-title-input').value = '';
-    document.getElementById('manual-content-input').value = '';
     document.getElementById('manual-url-input').value = '';
     document.getElementById('manual-tags-input').value = '';
+    
+    initQuillEditor('');
+    
     document.getElementById('manual-save-btn').textContent = '💾 Save';
     document.getElementById('manual-modal-ov').classList.add('show');
 }
 
-function closeManualModal() { document.getElementById('manual-modal-ov').classList.remove('show'); editingManualItem = null; }
-function closeManualModalOv(e) { if (e.target === document.getElementById('manual-modal-ov')) closeManualModal(); }
-
+// Submit save/edit
 async function submitManualItem() {
     const title = document.getElementById('manual-title-input').value.trim();
-    const content = document.getElementById('manual-content-input').value.trim();
     const category = document.getElementById('manual-cat-select').value;
     const source_url = document.getElementById('manual-url-input').value.trim() || null;
     const tags = document.getElementById('manual-tags-input').value.trim() || null;
-
-    if (!title) { toast('Title is required', 'err'); return; }
-    if (!content) { toast('Content is required', 'err'); return; }
-
+    
+    let content = '';
+    if (quillEditor) {
+        content = quillEditor.root.innerHTML;
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = content;
+        const isEmpty = !tempDiv.textContent.trim();
+        if (isEmpty) {
+            toast('Content is required', 'err');
+            return;
+        }
+    }
+    
+    if (!title) {
+        toast('Title is required', 'err');
+        return;
+    }
+    
     const btn = document.getElementById('manual-save-btn');
-    btn.disabled = true; btn.textContent = 'Saving…';
-
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    
     try {
         if (editingManualItem) {
-            // Update
             const { id, type } = editingManualItem;
-            const updated = await api('PUT', `/manual/${type}/${id}`, { title, content, category, source_url, tags });
+            const updated = await api('PUT', `/manual/${type}/${id}`, { 
+                title, content, category, source_url, tags 
+            });
             const arr = type === 'reports' ? manualData.reports : manualData.papers;
             const idx = arr.findIndex(i => i.id === id);
             if (idx !== -1) arr[idx] = updated;
             toast('Updated ✓', 'ok');
         } else {
-            // Create
             const type = document.querySelector('input[name="manual-type"]:checked').value;
-            const created = await api('POST', `/manual/${type}`, { title, content, category, source_url, tags });
+            const created = await api('POST', `/manual/${type}`, { 
+                title, content, category, source_url, tags 
+            });
             if (type === 'reports') manualData.reports.unshift(created);
             else manualData.papers.unshift(created);
-            // Switch to matching tab
             setManualTab(type);
             toast('Saved ✓', 'ok');
         }
@@ -1781,17 +2002,37 @@ async function submitManualItem() {
     }
 }
 
+// Close modal
+function closeManualModal() {
+    document.getElementById('manual-modal-ov').classList.remove('show');
+    editingManualItem = null;
+    if (quillEditor) {
+        quillEditor = null;
+    }
+}
+
+function closeManualModalOv(e) {
+    if (e.target === document.getElementById('manual-modal-ov')) {
+        closeManualModal();
+    }
+}
+
+// Delete item
 async function deleteManualItem(id, type) {
     if (!confirm('Delete this item?')) return;
     try {
         await api('DELETE', `/manual/${type}/${id}`);
         if (type === 'reports') manualData.reports = manualData.reports.filter(i => i.id !== id);
         else manualData.papers = manualData.papers.filter(i => i.id !== id);
-        updateManualCount(); renderManualLib(); toast('Deleted ✓', 'ok');
-    } catch (e) { toast('Error: ' + e.message, 'err'); }
+        updateManualCount(); 
+        renderManualLib(); 
+        toast('Deleted ✓', 'ok');
+    } catch (e) { 
+        toast('Error: ' + e.message, 'err'); 
+    }
 }
-// ─────────────────────────────────────────────────────────────────────────────
-// MANUAL LIBRARY — WORD EXPORT
+
+// Export functions
 function exportManualItemById(id, type) {
     const item = (type === 'reports' ? manualData.reports : manualData.papers).find(i => i.id === id);
     if (item) exportManualToWord(item, type);
@@ -1799,43 +2040,22 @@ function exportManualItemById(id, type) {
 
 function exportManualToWord(item, type) {
     const isReport = type === 'reports';
-    const title    = item.title || (isReport ? 'Radiology Report' : 'Paper / Article');
+    const title = item.title || (isReport ? 'Radiology Report' : 'Paper / Article');
     const category = item.category || 'OTHERS';
-    const date     = item.created_at
-        ? new Date(item.created_at).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' })
-        : new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+    const date = item.created_at
+        ? new Date(item.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+        : new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     const exportedAt = new Date().toLocaleString();
-    const tags     = item.tags ? item.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+    const tags = item.tags ? item.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
     const sourceUrl = item.source_url || '';
 
-    // Category colours (Word-safe hex)
     const catMeta = {
-        NEURO:  { hex: '#4d9fff', label: 'NEURO',  icon: '🧠' },
-        MSK:    { hex: '#3ecf8e', label: 'MSK',    icon: '🦴' },
-        BODY:   { hex: '#f0b429', label: 'BODY',   icon: '🫀' },
+        NEURO: { hex: '#4d9fff', label: 'NEURO', icon: '🧠' },
+        MSK: { hex: '#3ecf8e', label: 'MSK', icon: '🦴' },
+        BODY: { hex: '#f0b429', label: 'BODY', icon: '🫀' },
         OTHERS: { hex: '#7a8fb5', label: 'OTHERS', icon: '📂' },
     };
     const cm = catMeta[category] || catMeta.OTHERS;
-
-    // Convert plain-text content to readable HTML paragraphs
-    function contentToHtml(raw) {
-        if (!raw) return '<p>—</p>';
-        // Preserve existing markdown-like formatting
-        let html = markdownToHtml(raw);
-        // Wrap bare line blocks in paragraphs if not already tagged
-        if (!html.includes('<p') && !html.includes('<li') && !html.includes('<h')) {
-            html = html.split(/\n\n+/).map(b => `<p>${b.replace(/\n/g,'<br>')}</p>`).join('');
-        }
-        return html;
-    }
-
-    const tagsHtml = tags.length
-        ? `<p style="margin:4px 0 0 0"><span style="font-size:10pt;color:#555">Tags: </span>${tags.map(t=>`<span style="display:inline-block;padding:1px 8px;border:1px solid #ccc;border-radius:10px;font-size:9pt;color:#555;margin:2px 3px">${escapeHtml(t)}</span>`).join(' ')}</p>`
-        : '';
-
-    const sourceHtml = sourceUrl
-        ? `<p style="margin:4px 0 0 0;font-size:10pt;color:#4d9fff">🔗 <a href="${escapeHtml(sourceUrl)}" style="color:#4d9fff">${escapeHtml(sourceUrl)}</a></p>`
-        : '';
 
     const html = `<!DOCTYPE html>
 <html>
@@ -1843,17 +2063,15 @@ function exportManualToWord(item, type) {
 <meta charset="UTF-8">
 <title>${escapeHtml(title)}</title>
 <style>
-  /* ── Page layout ── */
   @page { margin: 2.54cm; }
   body {
     font-family: Calibri, 'Segoe UI', Arial, sans-serif;
     font-size: 11pt;
     color: #1a1a2e;
     line-height: 1.65;
-    margin: 0; padding: 0;
+    margin: 0;
+    padding: 0;
   }
-
-  /* ── Cover banner ── */
   .cover {
     background: linear-gradient(135deg, ${cm.hex} 0%, #1a1a2e 100%);
     color: #ffffff;
@@ -1861,64 +2079,22 @@ function exportManualToWord(item, type) {
     border-radius: 0 0 12px 12px;
     margin-bottom: 28px;
   }
-  .cover-super {
-    font-size: 9pt;
-    letter-spacing: 2.5px;
-    text-transform: uppercase;
-    opacity: 0.75;
-    margin-bottom: 8px;
-  }
-  .cover-title {
-    font-size: 20pt;
-    font-weight: 700;
-    line-height: 1.25;
-    margin-bottom: 14px;
-  }
-  .cover-meta {
-    font-size: 10pt;
-    opacity: 0.85;
-    display: flex;
-    gap: 22px;
-    flex-wrap: wrap;
-  }
+  .cover-title { font-size: 20pt; font-weight: 700; margin-bottom: 14px; }
+  .cover-meta { font-size: 10pt; opacity: 0.85; display: flex; gap: 22px; flex-wrap: wrap; }
   .cover-badge {
     display: inline-block;
     background: rgba(255,255,255,.2);
     border: 1px solid rgba(255,255,255,.35);
     border-radius: 20px;
     padding: 3px 14px;
-    font-size: 10pt;
-    font-weight: 700;
-    letter-spacing: 1px;
   }
-
-  /* ── Meta bar ── */
   .meta-bar {
     background: #f5f7fb;
     border: 1px solid #e0e4ed;
     border-radius: 8px;
     padding: 12px 18px;
     margin-bottom: 24px;
-    font-size: 10pt;
-    color: #555;
   }
-  .meta-bar table { width: 100%; border-collapse: collapse; }
-  .meta-bar td { padding: 3px 6px; vertical-align: top; }
-  .meta-bar td:first-child { color: #888; font-weight: 600; width: 110px; white-space: nowrap; }
-
-  /* ── Section heading ── */
-  .section-label {
-    font-size: 8.5pt;
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: ${cm.hex};
-    border-left: 4px solid ${cm.hex};
-    padding: 3px 0 3px 12px;
-    margin: 0 0 10px 0;
-  }
-
-  /* ── Content box ── */
   .content-box {
     background: #fafbff;
     border: 1px solid #e0e4ed;
@@ -1926,41 +2102,11 @@ function exportManualToWord(item, type) {
     border-radius: 0 8px 8px 0;
     padding: 16px 20px;
     margin-bottom: 24px;
-    font-size: 11pt;
-    line-height: 1.75;
   }
-  .content-box p { margin: 0 0 10px 0; }
-  .content-box p:last-child { margin-bottom: 0; }
-  .content-box ul { margin: 6px 0 6px 20px; padding: 0; }
+  .content-box h1, .content-box h2, .content-box h3 { margin: 16px 0 8px; }
+  .content-box ul, .content-box ol { padding-left: 24px; margin: 8px 0; }
   .content-box li { margin: 4px 0; }
-  .content-box h2 {
-    font-size: 12pt;
-    color: ${cm.hex};
-    border-left: 3px solid ${cm.hex};
-    padding-left: 10px;
-    margin: 16px 0 8px;
-  }
-  .content-box table {
-    border-collapse: collapse;
-    width: 100%;
-    margin: 10px 0;
-    font-size: 10pt;
-  }
-  .content-box th {
-    background: ${cm.hex};
-    color: #fff;
-    padding: 7px 10px;
-    border: 1px solid #ccc;
-    text-align: left;
-  }
-  .content-box td {
-    padding: 6px 10px;
-    border: 1px solid #ddd;
-    vertical-align: top;
-  }
-  .content-box tr:nth-child(even) td { background: #f0f4ff; }
-
-  /* ── Footer ── */
+  .content-box strong { font-weight: 700; color: ${cm.hex}; }
   .footer {
     margin-top: 40px;
     border-top: 2px solid ${cm.hex};
@@ -1969,42 +2115,25 @@ function exportManualToWord(item, type) {
     font-size: 9pt;
     color: #aaa;
   }
-  .footer strong { color: ${cm.hex}; }
 </style>
 </head>
 <body>
 
-<!-- ── COVER BANNER ── -->
 <div class="cover">
-  <div class="cover-super">Radiology Coach · Manual ${isReport ? 'Report' : 'Paper'} Export</div>
   <div class="cover-title">${escapeHtml(title)}</div>
   <div class="cover-meta">
     <span class="cover-badge">${cm.icon} ${cm.label}</span>
     <span>Saved: ${date}</span>
-    ${tags.length ? `<span>Tags: ${tags.map(t=>escapeHtml(t)).join(', ')}</span>` : ''}
+    ${tags.length ? `<span>Tags: ${tags.map(t => escapeHtml(t)).join(', ')}</span>` : ''}
   </div>
 </div>
 
-<!-- ── META BAR ── -->
-<div class="meta-bar">
-  <table>
-    <tr><td>Type</td><td>${isReport ? '📄 Radiology Report' : '📚 Paper / Article'}</td></tr>
-    <tr><td>Category</td><td>${cm.icon} ${cm.label}</td></tr>
-    <tr><td>Saved on</td><td>${date}</td></tr>
-    ${sourceUrl ? `<tr><td>Source</td><td><a href="${escapeHtml(sourceUrl)}" style="color:${cm.hex}">${escapeHtml(sourceUrl)}</a></td></tr>` : ''}
-    ${tags.length ? `<tr><td>Tags</td><td>${tags.map(t=>`<span style="display:inline-block;padding:1px 8px;border:1px solid #ccc;border-radius:10px;font-size:9pt;color:#555;margin:2px 3px">${escapeHtml(t)}</span>`).join(' ')}</td></tr>` : ''}
-  </table>
-</div>
-
-<!-- ── CONTENT ── -->
-<div class="section-label">${isReport ? '📋 Report Content' : '📑 Paper Content'}</div>
 <div class="content-box">
-  ${contentToHtml(item.content)}
+  ${item.content || '<p>— No content —</p>'}
 </div>
 
-<!-- ── FOOTER ── -->
 <div class="footer">
-  Exported on ${exportedAt} &nbsp;·&nbsp; <strong>Radiology Coach</strong> — Manual Library &nbsp;·&nbsp; AI-Powered Radiology Training Workspace
+  Exported on ${exportedAt} · <strong>Radiology Coach</strong>
 </div>
 
 </body>
@@ -2014,8 +2143,10 @@ function exportManualToWord(item, type) {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `${title.replace(/[^a-z0-9]/gi, '_').slice(0, 60)}.doc`;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(a.href);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
     toast(`Exported "${title}" ✓`, 'ok');
 }
 
@@ -2023,50 +2154,30 @@ function exportAllManualToWord() {
     const all = [...manualData.reports.map(i=>({...i,_type:'reports'})), ...manualData.papers.map(i=>({...i,_type:'papers'}))];
     if (!all.length) { toast('No items to export', 'err'); return; }
 
-    const catMeta = {
-        NEURO:  { hex: '#4d9fff', icon: '🧠' },
-        MSK:    { hex: '#3ecf8e', icon: '🦴' },
-        BODY:   { hex: '#f0b429', icon: '🫀' },
-        OTHERS: { hex: '#7a8fb5', icon: '📂' },
-    };
-
     const itemsHtml = all.map((item, idx) => {
-        const cm = catMeta[item.category] || catMeta.OTHERS;
         const date = item.created_at ? new Date(item.created_at).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}) : '';
-        const tags = item.tags ? item.tags.split(',').map(t=>t.trim()).filter(Boolean) : [];
         return `
-        <div style="page-break-before:${idx>0?'always':'auto'};padding-top:${idx>0?'24px':'0'}">
-          <div style="background:linear-gradient(135deg,${cm.hex} 0%,#1a1a2e 100%);color:#fff;padding:20px 28px;border-radius:8px;margin-bottom:20px">
-            <div style="font-size:8.5pt;letter-spacing:2px;text-transform:uppercase;opacity:.75;margin-bottom:6px">
-              ${item._type === 'reports' ? 'Radiology Report' : 'Paper / Article'} · ${cm.icon} ${item.category}
-            </div>
-            <div style="font-size:16pt;font-weight:700;line-height:1.3;margin-bottom:10px">${escapeHtml(item.title)}</div>
-            <div style="font-size:9.5pt;opacity:.85">${date}${tags.length ? ' · ' + tags.map(t=>escapeHtml(t)).join(', ') : ''}</div>
-          </div>
-          ${item.source_url ? `<p style="font-size:10pt;margin:0 0 12px"><span style="color:#888">Source: </span><a href="${escapeHtml(item.source_url)}" style="color:${cm.hex}">${escapeHtml(item.source_url)}</a></p>` : ''}
-          <div style="background:#fafbff;border:1px solid #e0e4ed;border-left:4px solid ${cm.hex};border-radius:0 8px 8px 0;padding:14px 18px;font-size:11pt;line-height:1.75;white-space:pre-wrap">${escapeHtml(item.content)}</div>
+        <div style="page-break-before:${idx>0?'always':'auto'};margin-top:${idx>0?'40px':'0'}">
+          <h2>${escapeHtml(item.title)}</h2>
+          <div style="color:#888;margin-bottom:16px">${date} · ${item.category || 'OTHERS'}</div>
+          <div style="background:#fafbff;border:1px solid #e0e4ed;padding:16px;border-radius:8px">${item.content || '—'}</div>
         </div>`;
-    }).join('<hr style="border:none;border-top:1px solid #e0e4ed;margin:28px 0">');
+    }).join('<hr style="margin:30px 0">');
 
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Manual Library Export</title>
-    <style>body{font-family:Calibri,'Segoe UI',Arial,sans-serif;font-size:11pt;color:#1a1a2e;line-height:1.65;margin:2.54cm}</style>
+    <style>body{font-family:Calibri,Arial;margin:2.54cm;line-height:1.65}</style>
     </head><body>
-    <div style="text-align:center;margin-bottom:36px;padding-bottom:16px;border-bottom:3px solid #4d9fff">
-      <div style="font-size:22pt;font-weight:700;color:#1a1a2e">Manual Library</div>
-      <div style="font-size:11pt;color:#888;margin-top:6px">${all.length} items · Exported ${new Date().toLocaleString()}</div>
-    </div>
+    <h1>Manual Library Export</h1>
+    <p>${all.length} items · Exported ${new Date().toLocaleString()}</p>
     ${itemsHtml}
-    <div style="margin-top:40px;border-top:2px solid #4d9fff;padding-top:10px;text-align:center;font-size:9pt;color:#aaa">
-      <strong style="color:#4d9fff">Radiology Coach</strong> — Manual Library Export
-    </div>
     </body></html>`;
 
     const blob = new Blob([html], { type: 'application/msword' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `manual_library_export_${new Date().toISOString().slice(0,10)}.doc`;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(a.href);
+    a.click();
+    URL.revokeObjectURL(a.href);
     toast(`Exported all ${all.length} items ✓`, 'ok');
 }
 
