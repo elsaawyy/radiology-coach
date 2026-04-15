@@ -830,7 +830,7 @@ textarea::placeholder { color:var(--text3); }
 </div>
 
 <!-- MANUAL SAVE / EDIT MODAL -->
-<div class="overlay" id="manual-modal-ov" onclick="closeManualModalOv(event)" onkeydown="if(event.key==='Enter'&&event.target.tagName==='INPUT'){event.preventDefault();}">
+<div class="overlay" id="manual-modal-ov" onclick="closeManualModalOv(event)">
   <div class="modal" style="max-width: 760px">
     <div class="modal-top">
       <div class="modal-title" id="manual-modal-title">Save New Item</div>
@@ -865,7 +865,6 @@ textarea::placeholder { color:var(--text3); }
       <div class="modal-section">
         <div class="modal-lbl">Title <span style="color:var(--red)">*</span></div>
         <input type="text" id="manual-title-input" placeholder="e.g., LI-RADS criteria for HCC"
-          onkeydown="if(event.key==='Enter'){event.preventDefault();}"
           style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;font-family:var(--body);font-size:13px;outline:none;margin-top:4px">
       </div>
 
@@ -882,7 +881,6 @@ textarea::placeholder { color:var(--text3); }
       <div class="modal-section">
         <div class="modal-lbl">Source URL <span style="color:var(--text3);font-weight:400">(optional)</span></div>
         <input type="url" id="manual-url-input" placeholder="https://doi.org/…"
-          onkeydown="if(event.key==='Enter'){event.preventDefault();}"
           style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;font-family:var(--body);font-size:13px;outline:none;margin-top:4px">
       </div>
 
@@ -890,7 +888,6 @@ textarea::placeholder { color:var(--text3); }
       <div class="modal-section">
         <div class="modal-lbl">Tags <span style="color:var(--text3);font-weight:400">(optional, comma-separated)</span></div>
         <input type="text" id="manual-tags-input" placeholder="e.g., liver, HCC, CT, staging"
-          onkeydown="if(event.key==='Enter'){event.preventDefault();}"
           style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;font-family:var(--body);font-size:13px;outline:none;margin-top:4px">
       </div>
 
@@ -1732,58 +1729,45 @@ function catBadge(cat) {
 }
 
 function destroyQuillEditor() {
-    if (quillEditor) {
-        // Remove the Quill instance
-        quillEditor = null;
-    }
-    // Clear the container completely
-    const container = document.getElementById('quill-editor-container');
-    if (container) {
-        // Remove all content
-        container.innerHTML = '';
-        // Remove any Quill-specific classes
-        container.className = 'quill-editor-wrapper';
+    quillEditor = null;
+    // Replace the container with a brand-new element to fully purge all Quill DOM/event remnants
+    const old = document.getElementById('quill-editor-container');
+    if (old && old.parentNode) {
+        const fresh = document.createElement('div');
+        fresh.id = 'quill-editor-container';
+        fresh.className = 'quill-editor-wrapper';
+        old.parentNode.replaceChild(fresh, old);
     }
 }
 
 
 function initQuillEditor(content = '') {
-    const container = document.getElementById('quill-editor-container');
-    
-    if (!container) {
-        console.error('Quill container not found');
-        return;
-    }
-    
-    // First, destroy any existing editor
+    // Always destroy first to guarantee a completely clean container
     destroyQuillEditor();
-    
-    // Wait a tiny bit for the DOM to settle
-    setTimeout(function() {
-        try {
-            // Create fresh Quill instance
-            quillEditor = new Quill('#quill-editor-container', {
-                theme: 'snow',
-                placeholder: 'Write your content here with rich formatting...',
-                modules: {
-                    toolbar: [
-                        ['bold', 'italic', 'underline'],
-                        [{ 'header': [1, 2, 3, false] }],
-                        ['clean'],
-                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                        ['link']
-                    ]
-                }
-            });
-            
-            // Set content if provided
-            if (content && content !== '') {
-                quillEditor.root.innerHTML = content;
+
+    const container = document.getElementById('quill-editor-container');
+    if (!container) { console.error('Quill container not found'); return; }
+
+    try {
+        quillEditor = new Quill('#quill-editor-container', {
+            theme: 'snow',
+            placeholder: 'Write your content here with rich formatting...',
+            modules: {
+                toolbar: [
+                    ['bold', 'italic', 'underline'],
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['clean'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    ['link']
+                ]
             }
-        } catch(e) {
-            console.error('Error creating Quill editor:', e);
+        });
+        if (content && content !== '') {
+            quillEditor.root.innerHTML = content;
         }
-    }, 50);
+    } catch(e) {
+        console.error('Error creating Quill editor:', e);
+    }
 }
 
 async function loadManualLibrary() {
