@@ -830,7 +830,7 @@ textarea::placeholder { color:var(--text3); }
 </div>
 
 <!-- MANUAL SAVE / EDIT MODAL -->
-<div class="overlay" id="manual-modal-ov" onclick="closeManualModalOv(event)">
+<div class="overlay" id="manual-modal-ov" onclick="closeManualModalOv(event)" onkeydown="if(event.key==='Enter'&&event.target.tagName==='INPUT'){event.preventDefault();}">
   <div class="modal" style="max-width: 760px">
     <div class="modal-top">
       <div class="modal-title" id="manual-modal-title">Save New Item</div>
@@ -865,6 +865,7 @@ textarea::placeholder { color:var(--text3); }
       <div class="modal-section">
         <div class="modal-lbl">Title <span style="color:var(--red)">*</span></div>
         <input type="text" id="manual-title-input" placeholder="e.g., LI-RADS criteria for HCC"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();}"
           style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;font-family:var(--body);font-size:13px;outline:none;margin-top:4px">
       </div>
 
@@ -881,6 +882,7 @@ textarea::placeholder { color:var(--text3); }
       <div class="modal-section">
         <div class="modal-lbl">Source URL <span style="color:var(--text3);font-weight:400">(optional)</span></div>
         <input type="url" id="manual-url-input" placeholder="https://doi.org/…"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();}"
           style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;font-family:var(--body);font-size:13px;outline:none;margin-top:4px">
       </div>
 
@@ -888,6 +890,7 @@ textarea::placeholder { color:var(--text3); }
       <div class="modal-section">
         <div class="modal-lbl">Tags <span style="color:var(--text3);font-weight:400">(optional, comma-separated)</span></div>
         <input type="text" id="manual-tags-input" placeholder="e.g., liver, HCC, CT, staging"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();}"
           style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;font-family:var(--body);font-size:13px;outline:none;margin-top:4px">
       </div>
 
