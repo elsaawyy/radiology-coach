@@ -1728,68 +1728,60 @@ function catBadge(cat) {
     return `<span style="display:inline-block;padding:2px 9px;border-radius:10px;font-size:10px;font-family:var(--mono);font-weight:600;background:${c.bg};color:${c.text};letter-spacing:.5px">${cat}</span>`;
 }
 
-// Destroy existing Quill instance properly
 function destroyQuillEditor() {
     if (quillEditor) {
-        try {
-            // Get the container element
-            const container = document.getElementById('quill-editor-container');
-            
-            // Destroy Quill instance
-            quillEditor = null;
-            
-            // Completely clear the container's HTML
-            if (container) {
-                container.innerHTML = '';
-            }
-        } catch(e) {
-            console.log('Error destroying editor:', e);
-        }
+        // Remove the Quill instance
+        quillEditor = null;
+    }
+    // Clear the container completely
+    const container = document.getElementById('quill-editor-container');
+    if (container) {
+        // Remove all content
+        container.innerHTML = '';
+        // Remove any Quill-specific classes
+        container.className = 'quill-editor-wrapper';
     }
 }
 
-// Initialize Quill Editor with proper cleanup
+
 function initQuillEditor(content = '') {
     const container = document.getElementById('quill-editor-container');
     
-    // Check if container exists
     if (!container) {
         console.error('Quill container not found');
         return;
     }
     
-    // IMPORTANT: Destroy existing instance AND clear the container
-    if (quillEditor) {
-        quillEditor = null;
-    }
+    // First, destroy any existing editor
+    destroyQuillEditor();
     
-    // Clear the container HTML completely
-    container.innerHTML = '';
-    
-    // Small delay to ensure DOM is clean
+    // Wait a tiny bit for the DOM to settle
     setTimeout(function() {
-        // Create new Quill instance
-        quillEditor = new Quill('#quill-editor-container', {
-            theme: 'snow',
-            placeholder: 'Write your content here with rich formatting...',
-            modules: {
-                toolbar: [
-                    ['bold', 'italic', 'underline'],
-                    [{ 'header': [1, 2, 3, false] }],
-                    ['clean'],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    ['link']
-                ]
+        try {
+            // Create fresh Quill instance
+            quillEditor = new Quill('#quill-editor-container', {
+                theme: 'snow',
+                placeholder: 'Write your content here with rich formatting...',
+                modules: {
+                    toolbar: [
+                        ['bold', 'italic', 'underline'],
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['clean'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ['link']
+                    ]
+                }
+            });
+            
+            // Set content if provided
+            if (content && content !== '') {
+                quillEditor.root.innerHTML = content;
             }
-        });
-        
-        // Set content if provided
-        if (content && content !== '') {
-            quillEditor.root.innerHTML = content;
+        } catch(e) {
+            console.error('Error creating Quill editor:', e);
         }
-    }, 10);
+    }, 50);
 }
-
 
 async function loadManualLibrary() {
     try {
@@ -1914,7 +1906,6 @@ function openManualEdit(id, type) {
     editingManualItem = { id, type };
     document.getElementById('manual-modal-title').textContent = 'Edit Item';
     
-    // Set the form values
     document.getElementById('mtype-report').checked = type === 'reports';
     document.getElementById('mtype-paper').checked = type === 'papers';
     document.getElementById('mtype-report').disabled = true;
@@ -1925,12 +1916,16 @@ function openManualEdit(id, type) {
     document.getElementById('manual-url-input').value = item.source_url || '';
     document.getElementById('manual-tags-input').value = item.tags || '';
     
-    // Initialize editor with existing content
+    // Show modal FIRST
+    document.getElementById('manual-modal-ov').classList.add('show');
+    
+    // THEN initialize editor with content
     initQuillEditor(item.content);
     
     document.getElementById('manual-save-btn').textContent = '💾 Update';
-    document.getElementById('manual-modal-ov').classList.add('show');
 }
+
+
 // Open save modal
 function openManualSaveModal() {
     editingManualItem = null;
@@ -1943,12 +1938,15 @@ function openManualSaveModal() {
     document.getElementById('manual-url-input').value = '';
     document.getElementById('manual-tags-input').value = '';
     
-    // Initialize fresh editor
+    // Show modal FIRST
+    document.getElementById('manual-modal-ov').classList.add('show');
+    
+    // THEN initialize editor (after modal is visible)
     initQuillEditor('');
     
     document.getElementById('manual-save-btn').textContent = '💾 Save';
-    document.getElementById('manual-modal-ov').classList.add('show');
 }
+
 
 // Submit save/edit
 async function submitManualItem() {
@@ -2011,10 +2009,10 @@ async function submitManualItem() {
 
 // Close modal
 function closeManualModal() {
-    // Clean up Quill editor first
+    // Destroy editor first
     destroyQuillEditor();
     
-    // Hide the modal
+    // Hide modal
     document.getElementById('manual-modal-ov').classList.remove('show');
     
     // Reset editing reference
