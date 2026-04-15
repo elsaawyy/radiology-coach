@@ -1728,15 +1728,35 @@ function catBadge(cat) {
     return `<span style="display:inline-block;padding:2px 9px;border-radius:10px;font-size:10px;font-family:var(--mono);font-weight:600;background:${c.bg};color:${c.text};letter-spacing:.5px">${cat}</span>`;
 }
 
-// Initialize Quill Editor
-function initQuillEditor(content = '') {
+// Destroy existing Quill instance properly
+function destroyQuillEditor() {
     if (quillEditor) {
-        const container = document.getElementById('quill-editor-container');
-        if (container && container.innerHTML) {
-            container.innerHTML = '';
+        try {
+            // Remove the Quill instance
+            quillEditor = null;
+        } catch(e) {
+            console.log('Error destroying editor:', e);
         }
     }
+}
+
+// Initialize Quill Editor with proper cleanup
+function initQuillEditor(content = '') {
+    const container = document.getElementById('quill-editor-container');
     
+    // Check if container exists
+    if (!container) {
+        console.error('Quill container not found');
+        return;
+    }
+    
+    // Clean up existing instance first
+    destroyQuillEditor();
+    
+    // Clear the container
+    container.innerHTML = '';
+    
+    // Create new Quill instance
     quillEditor = new Quill('#quill-editor-container', {
         theme: 'snow',
         placeholder: 'Write your content here with rich formatting...',
@@ -1751,6 +1771,7 @@ function initQuillEditor(content = '') {
         }
     });
     
+    // Set content if provided
     if (content && content !== '') {
         quillEditor.root.innerHTML = content;
     }
@@ -1879,6 +1900,7 @@ function openManualEdit(id, type) {
     editingManualItem = { id, type };
     document.getElementById('manual-modal-title').textContent = 'Edit Item';
     
+    // Set the form values
     document.getElementById('mtype-report').checked = type === 'reports';
     document.getElementById('mtype-paper').checked = type === 'papers';
     document.getElementById('mtype-report').disabled = true;
@@ -1889,12 +1911,12 @@ function openManualEdit(id, type) {
     document.getElementById('manual-url-input').value = item.source_url || '';
     document.getElementById('manual-tags-input').value = item.tags || '';
     
+    // Initialize editor with existing content
     initQuillEditor(item.content);
     
     document.getElementById('manual-save-btn').textContent = '💾 Update';
     document.getElementById('manual-modal-ov').classList.add('show');
 }
-
 // Open save modal
 function openManualSaveModal() {
     editingManualItem = null;
@@ -1907,6 +1929,7 @@ function openManualSaveModal() {
     document.getElementById('manual-url-input').value = '';
     document.getElementById('manual-tags-input').value = '';
     
+    // Initialize fresh editor
     initQuillEditor('');
     
     document.getElementById('manual-save-btn').textContent = '💾 Save';
@@ -1974,11 +1997,14 @@ async function submitManualItem() {
 
 // Close modal
 function closeManualModal() {
+    // Clean up Quill editor first
+    destroyQuillEditor();
+    
+    // Hide the modal
     document.getElementById('manual-modal-ov').classList.remove('show');
+    
+    // Reset editing reference
     editingManualItem = null;
-    if (quillEditor) {
-        quillEditor = null;
-    }
 }
 
 function closeManualModalOv(e) {
