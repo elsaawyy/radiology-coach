@@ -1730,7 +1730,6 @@ function catBadge(cat) {
 
 function destroyQuillEditor() {
     quillEditor = null;
-    // Replace the container with a brand-new element to fully purge all Quill DOM/event remnants
     const old = document.getElementById('quill-editor-container');
     if (old && old.parentNode) {
         const fresh = document.createElement('div');
@@ -1740,34 +1739,32 @@ function destroyQuillEditor() {
     }
 }
 
-
 function initQuillEditor(content = '') {
-    // Always destroy first to guarantee a completely clean container
     destroyQuillEditor();
-
-    const container = document.getElementById('quill-editor-container');
-    if (!container) { console.error('Quill container not found'); return; }
-
-    try {
-        quillEditor = new Quill('#quill-editor-container', {
-            theme: 'snow',
-            placeholder: 'Write your content here with rich formatting...',
-            modules: {
-                toolbar: [
-                    ['bold', 'italic', 'underline'],
-                    [{ 'header': [1, 2, 3, false] }],
-                    ['clean'],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    ['link']
-                ]
+    requestAnimationFrame(function() {
+        const container = document.getElementById('quill-editor-container');
+        if (!container) { console.error('Quill container not found'); return; }
+        try {
+            quillEditor = new Quill('#quill-editor-container', {
+                theme: 'snow',
+                placeholder: 'Write your content here with rich formatting...',
+                modules: {
+                    toolbar: [
+                        ['bold', 'italic', 'underline'],
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['clean'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ['link']
+                    ]
+                }
+            });
+            if (content && content !== '') {
+                quillEditor.root.innerHTML = content;
             }
-        });
-        if (content && content !== '') {
-            quillEditor.root.innerHTML = content;
+        } catch(e) {
+            console.error('Error creating Quill editor:', e);
         }
-    } catch(e) {
-        console.error('Error creating Quill editor:', e);
-    }
+    });
 }
 
 async function loadManualLibrary() {
