@@ -1729,21 +1729,15 @@ function catBadge(cat) {
 }
 
 function destroyQuillEditor() {
-    quillEditor = null;
-    const old = document.getElementById('quill-editor-container');
-    if (old && old.parentNode) {
-        const fresh = document.createElement('div');
-        fresh.id = 'quill-editor-container';
-        fresh.className = 'quill-editor-wrapper';
-        old.parentNode.replaceChild(fresh, old);
+    // No-op: we keep the single Quill instance alive forever, just clear its content
+    if (quillEditor) {
+        quillEditor.setText('');
     }
 }
 
 function initQuillEditor(content = '') {
-    destroyQuillEditor();
-    requestAnimationFrame(function() {
-        const container = document.getElementById('quill-editor-container');
-        if (!container) { console.error('Quill container not found'); return; }
+    if (!quillEditor) {
+        // First time only: create the single Quill instance
         try {
             quillEditor = new Quill('#quill-editor-container', {
                 theme: 'snow',
@@ -1758,13 +1752,17 @@ function initQuillEditor(content = '') {
                     ]
                 }
             });
-            if (content && content !== '') {
-                quillEditor.root.innerHTML = content;
-            }
         } catch(e) {
             console.error('Error creating Quill editor:', e);
+            return;
         }
-    });
+    }
+    // Reset content each time modal opens
+    if (content && content !== '') {
+        quillEditor.root.innerHTML = content;
+    } else {
+        quillEditor.setText('');
+    }
 }
 
 async function loadManualLibrary() {
