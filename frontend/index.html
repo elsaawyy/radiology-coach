@@ -1817,9 +1817,21 @@ function renderManualLib() {
     el.innerHTML = '<div class="lib-grid">' + items.map(item => {
         const ts = item.created_at ? new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
         
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = item.content || '';
-        const plainPreview = tempDiv.textContent.slice(0, 100) + (tempDiv.textContent.length > 100 ? '…' : '');
+        // Handle both HTML and plain text for preview
+        let plainPreview = item.content || '';
+        const hasHtmlTags = /<[^>]+>/g.test(plainPreview);
+        
+        if (hasHtmlTags) {
+            // Strip HTML tags for preview
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = plainPreview;
+            plainPreview = tempDiv.textContent;
+        } else {
+            // Plain text - just use as is
+            plainPreview = plainPreview;
+        }
+        
+        plainPreview = plainPreview.slice(0, 100) + (plainPreview.length > 100 ? '…' : '');
         
         const tags = item.tags ? item.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
         const tagHtml = tags.length ? `<div style="margin-top:6px;display:flex;gap:5px;flex-wrap:wrap">${tags.map(t => `<span style="font-size:10px;font-family:var(--mono);color:var(--text3);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:1px 7px">${esc(t)}</span>`).join('')}</div>` : '';
@@ -1845,12 +1857,32 @@ function renderManualLib() {
     }).join('') + '</div>';
 }
 
+
 function openManualItem(id, type) {
     const item = (type === 'reports' ? manualData.reports : manualData.papers).find(i => i.id === id);
     if (!item) return;
     
     const ts = item.created_at ? new Date(item.created_at).toLocaleString() : '';
     const tags = item.tags ? item.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+    
+    // Detect if content is plain text (no HTML tags) and convert if needed
+    let displayContent = item.content || '—';
+    const hasHtmlTags = /<[^>]+>/g.test(displayContent);
+    
+    if (!hasHtmlTags && displayContent !== '—') {
+        // Convert plain text to HTML by replacing newlines with <br> and wrapping paragraphs
+        displayContent = displayContent
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, '<br>');
+        
+        // Wrap in paragraphs if not already
+        if (!displayContent.startsWith('<p>') && !displayContent.startsWith('<br>')) {
+            displayContent = `<p>${displayContent}</p>`;
+        }
+    }
 
     document.getElementById('manual-view-title').textContent = item.title;
     document.getElementById('manual-view-body').innerHTML = `
@@ -1862,7 +1894,7 @@ function openManualItem(id, type) {
         ${tags.length ? `<div class="modal-section" style="display:flex;gap:6px;flex-wrap:wrap">${tags.map(t => `<span style="font-size:11px;font-family:var(--mono);color:var(--text3);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:2px 9px">${esc(t)}</span>`).join('')}</div>` : ''}
         <div class="modal-section">
             <div class="modal-lbl">Content</div>
-            <div class="modal-val manual-content-display" style="white-space:normal;max-height:55vh;overflow-y:auto">${item.content || '—'}</div>
+            <div class="modal-val manual-content-display" style="white-space:normal;max-height:55vh;overflow-y:auto">${displayContent}</div>
         </div>
         <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
             <button class="btn-ghost" style="flex:1" onclick="closeManualView()">Close</button>
@@ -1871,6 +1903,7 @@ function openManualItem(id, type) {
         </div>`;
     document.getElementById('manual-view-ov').classList.add('show');
 }
+
 
 function closeManualView() { 
     document.getElementById('manual-view-ov').classList.remove('show'); 
@@ -1881,6 +1914,7 @@ function closeManualViewOv(e) {
 }
 
 // Open edit modal
+// Open edit modal - UPDATED to handle plain text conversion
 function openManualEdit(id, type) {
     const item = (type === 'reports' ? manualData.reports : manualData.papers).find(i => i.id === id);
     if (!item) return;
@@ -1898,15 +1932,32 @@ function openManualEdit(id, type) {
     document.getElementById('manual-url-input').value = item.source_url || '';
     document.getElementById('manual-tags-input').value = item.tags || '';
     
+    // Convert plain text to HTML for editing if needed
+    let contentToEdit = item.content || '';
+    const hasHtmlTags = /<[^>]+>/g.test(contentToEdit);
+    
+    if (!hasHtmlTags && contentToEdit) {
+        // Convert plain text to HTML
+        contentToEdit = contentToEdit
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, '<br>');
+        
+        if (!contentToEdit.startsWith('<p>') && !contentToEdit.startsWith('<br>')) {
+            contentToEdit = `<p>${contentToEdit}</p>`;
+        }
+    }
+    
     // Show modal FIRST
     document.getElementById('manual-modal-ov').classList.add('show');
     
-    // THEN initialize editor with content
-    initQuillEditor(item.content);
+    // THEN initialize editor with converted content
+    initQuillEditor(contentToEdit);
     
     document.getElementById('manual-save-btn').textContent = '💾 Update';
 }
-
 
 // Open save modal
 function openManualSaveModal() {
@@ -2047,6 +2098,27 @@ function exportManualToWord(item, type) {
     };
     const cm = catMeta[category] || catMeta.OTHERS;
 
+    // ========== ADD THIS CONVERSION ==========
+    // Convert plain text to HTML if needed
+    let exportContent = item.content || '<p>— No content —</p>';
+    const hasHtmlTags = /<[^>]+>/g.test(exportContent);
+    
+    if (!hasHtmlTags && exportContent !== '<p>— No content —</p>') {
+        // Convert plain text to HTML
+        exportContent = exportContent
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, '<br>');
+        
+        // Wrap in paragraph if not already
+        if (!exportContent.startsWith('<p>') && !exportContent.startsWith('<br>')) {
+            exportContent = `<p>${exportContent}</p>`;
+        }
+    }
+    // ========== END CONVERSION ==========
+
     const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -2078,25 +2150,6 @@ function exportManualToWord(item, type) {
     border-radius: 20px;
     padding: 3px 14px;
   }
-  .meta-bar {
-    background: #f5f7fb;
-    border: 1px solid #e0e4ed;
-    border-radius: 8px;
-    padding: 12px 18px;
-    margin-bottom: 24px;
-  }
-  .content-box {
-    background: #fafbff;
-    border: 1px solid #e0e4ed;
-    border-left: 4px solid ${cm.hex};
-    border-radius: 0 8px 8px 0;
-    padding: 16px 20px;
-    margin-bottom: 24px;
-  }
-  .content-box h1, .content-box h2, .content-box h3 { margin: 16px 0 8px; }
-  .content-box ul, .content-box ol { padding-left: 24px; margin: 8px 0; }
-  .content-box li { margin: 4px 0; }
-  .content-box strong { font-weight: 700; color: ${cm.hex}; }
   .footer {
     margin-top: 40px;
     border-top: 2px solid ${cm.hex};
@@ -2118,8 +2171,8 @@ function exportManualToWord(item, type) {
   </div>
 </div>
 
-<div class="content-box">
-  ${item.content || '<p>— No content —</p>'}
+<div class="content-box" style="background: #fafbff; border: 1px solid #e0e4ed; border-left: 4px solid ${cm.hex}; border-radius: 0 8px 8px 0; padding: 16px 20px; margin-bottom: 24px;">
+  ${exportContent}
 </div>
 
 <div class="footer">
@@ -2139,6 +2192,7 @@ function exportManualToWord(item, type) {
     URL.revokeObjectURL(a.href);
     toast(`Exported "${title}" ✓`, 'ok');
 }
+
 
 function exportAllManualToWord() {
     const all = [...manualData.reports.map(i=>({...i,_type:'reports'})), ...manualData.papers.map(i=>({...i,_type:'papers'}))];
