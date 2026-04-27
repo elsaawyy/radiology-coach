@@ -22,6 +22,7 @@ import os
 import httpx
 import re
 import json as json_lib
+import asyncio
 
 # ─── CONFIG ──────────────────────────────────────────────────────────────────
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/radiology_coach")
@@ -106,25 +107,35 @@ engine = sqlalchemy.create_engine(DATABASE_URL.replace("postgresql://", "postgre
 # ─── LIFESPAN ────────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Wait 5 seconds for database to initialize (fixes "database system is starting up" error)
+    print("🔄 Waiting for database to warm up...")
+    await asyncio.sleep(5)
+    
     metadata.create_all(engine)
     
     # Add user_prompt column to existing tables (safe — IF NOT EXISTS means no crash if already there)
     try:
-        with engine.connect() as conn:
-            conn.execute(sqlalchemy.text(
+        # Use async connection pattern
+        async with engine.connect() as conn:
+            await conn.execute(sqlalchemy.text(
                 "ALTER TABLE reports ADD COLUMN IF NOT EXISTS user_prompt TEXT"
             ))
-            conn.execute(sqlalchemy.text(
+            await conn.execute(sqlalchemy.text(
                 "ALTER TABLE papers ADD COLUMN IF NOT EXISTS user_prompt TEXT"
             ))
-            conn.commit()
+            await conn.commit()
             print("✅ Database migration: user_prompt columns ensured")
     except Exception as e:
         print(f"Migration note: {e}")
     
     await database.connect()
+    print("✅ Database connected successfully")
+    
     yield
+    
     await database.disconnect()
+    print("👋 Database disconnected")   
+    
     
 app = FastAPI(title="Radiology Coach API", version="1.0.0", lifespan=lifespan)
 
